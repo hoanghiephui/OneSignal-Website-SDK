@@ -510,7 +510,7 @@ class ServiceWorker {
    * Supported on: Chrome 50+ only
    */
   static onNotificationClosed(event) {
-    log.debug(`Called %con\NotificationClosed(${JSON.stringify(event, null, 4)}):`, getConsoleStyle('code'), event);
+    log.debug(`Called %conNotificationClosed(${JSON.stringify(event, null, 4)}):`, getConsoleStyle('code'), event);
     let notification = event.notification.data;
 
     (swivel as any).broadcast('notification.dismissed', notification);
@@ -674,7 +674,7 @@ class ServiceWorker {
                                         .then(() => Database.get('Ids', 'userId'))
                                         .then(userId => {
                                           if (self.registration && userId) {
-                                            //return ServiceWorker._subscribeForPush(self.registration).catch(e => log.error(e));
+                                            return ServiceWorker._subscribeForPush(self.registration).catch(e => log.error(e));
                                           }
                                         });
     event.waitUntil(activationPromise);

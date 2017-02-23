@@ -204,7 +204,7 @@ export default class OneSignal {
 
         InitHelper.initSaveState()
                  .then(() => InitHelper.saveInitOptions())
-                 .then(() => InitHelper.internalInit())
+                 .then(() => InitHelper.internalInit());
       });
     }
 
