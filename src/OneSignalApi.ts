@@ -165,6 +165,9 @@ export default class OneSignalApi {
         if (serverConfig.config.subdomain) {
           config.subdomain = serverConfig.config.subdomain
         }
+        if (serverConfig.config.vapid_public_key) {
+          config.vapidPublicKey = serverConfig.config.vapid_public_key;
+        }
       }
       return config;
     } catch (e) {

@@ -155,6 +155,7 @@ export default class Database {
     config.subdomain = await this.get<string>('Options', 'subdomain');
     config.autoRegister = await this.get<boolean>('Options', 'autoRegister');
     config.serviceWorkerConfig = await this.get<ServiceWorkerConfig>('Options', 'serviceWorkerConfig');
+    config.vapidPublicKey = await Database.get<string>('Options', 'vapidPublicKey');
     return config;
   }
 
@@ -171,6 +172,8 @@ export default class Database {
       await this.put('Options', { key: 'httpUseOneSignalCom', value: true })
     else
       await this.put('Options', {key: 'httpUseOneSignalCom', value: false })
+    if (appConfig.vapidPublicKey)
+      await this.put('Options', {key: 'vapidPublicKey', value: appConfig.vapidPublicKey})
   }
 
   async getAppState(): Promise<AppState> {

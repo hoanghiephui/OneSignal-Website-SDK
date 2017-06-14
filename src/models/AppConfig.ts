@@ -14,6 +14,7 @@ export class AppConfig {
     httpUseOneSignalCom?: boolean;
     cookieSyncEnabled?: boolean;
     safariWebId?: string;
+    vapidPublicKey?: string;
 }
 
 export interface ServerAppConfig {

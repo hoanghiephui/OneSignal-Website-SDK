@@ -1,5 +1,6 @@
 import SdkEnvironment from './managers/SdkEnvironment';
 import { BuildEnvironmentKind } from './models/BuildEnvironmentKind';
+import * as Browser from "bowser";
 
 export default class Environment {
 
@@ -54,5 +55,16 @@ export default class Environment {
   static supportsServiceWorkers() {
     return typeof navigator !== "undefined" &&
            'serviceWorker' in navigator;
+  }
+
+  static supportsVapid() {
+    if (Browser.name === '' && Browser.version === '') {
+      var browser = (Browser as any)._detect(navigator.userAgent);
+    } else {
+      var browser: any = Browser;
+    }
+    let userAgent = navigator.userAgent || '';
+    return (browser.chrome && new Number(browser.version) >= 52) ||
+      (browser.firefox && new Number(browser.version) >= 48);
   }
 }
