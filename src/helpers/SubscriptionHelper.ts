@@ -18,14 +18,31 @@ export default class SubscriptionHelper {
   static registerForW3CPush(options) {
     log.debug(`Called %cregisterForW3CPush(${JSON.stringify(options)})`, getConsoleStyle('code'));
     return Database.get('Ids', 'registrationId')
-                   .then(function _registerForW3CPush_GotRegistrationId(registrationIdResult) {
+      .then(function _registerForW3CPush_GotRegistrationId(registrationIdResult) {
+                     /*
+                        If there's:
+                          - No saved push token
+                          - Or this method was called internally
+                          - Or notification permissions are unprompted or blocked
+                          - Or there's no active service worker
+                      */
                      if (!registrationIdResult || !options.fromRegisterFor || window.Notification.permission != "granted" || navigator.serviceWorker.controller == null) {
                        navigator.serviceWorker.getRegistration().then(function (serviceWorkerRegistration) {
                          var sw_path = "";
 
+                         // Obtain directory path to SW file
                          if (OneSignal.config.path)
                            sw_path = OneSignal.config.path;
 
+                        /*
+                          Are there any existing registrations?
+
+                          Based on on which SW was installed last, install the normal or alternate worker.
+                          If no SW was installed, install the normal worker.
+                          If we detect a non-OneSignal worker, overwrite it. But unregister for push first.
+
+                          After the registerServiceWorker() call is
+                         */
                          if (typeof serviceWorkerRegistration === "undefined") // Nothing registered, very first run
                            ServiceWorkerHelper.registerServiceWorker(sw_path + SdkEnvironment.getBuildEnvPrefix() + OneSignal.SERVICE_WORKER_PATH);
                          else {
@@ -82,21 +99,27 @@ export default class SubscriptionHelper {
 
   static enableNotifications(existingServiceWorkerRegistration) { // is ServiceWorkerRegistration type
     log.debug(`Called %cenableNotifications()`, getConsoleStyle('code'));
+    // TODO: This should be removed because it's deprecated
+    // Start session if push is not supported? Is this necessary?
     if (!('PushManager' in window)) {
       log.info("Push messaging is not supported. No PushManager.");
       MainHelper.beginTemporaryBrowserSession();
       return;
     }
 
+    // Return if notifications are blocked
     if (window.Notification.permission === 'denied') {
       log.warn("The user has blocked notifications.");
       return;
     }
 
+    // Waits until the installed service worker is ready
     log.debug(`Calling %cnavigator.serviceWorker.ready() ...`, getConsoleStyle('code'));
     navigator.serviceWorker.ready.then(function (serviceWorkerRegistration) {
       log.debug('Finished calling %cnavigator.serviceWorker.ready', getConsoleStyle('code'));
+      // Installs message channel to receive service worker messages
       MainHelper.establishServiceWorkerChannel(serviceWorkerRegistration);
+      // Runs this
       SubscriptionHelper.subscribeForPush(serviceWorkerRegistration);
     });
   }
@@ -163,11 +186,18 @@ export default class SubscriptionHelper {
     log.debug(`Called %c_subscribeForPush()`, getConsoleStyle('code'));
     var notificationPermissionBeforeRequest = '';
 
+    /*
+      Obtain existing notification permission before we actually prompt the user.
+      Not needed anymore since Chrome 52.
+     */
     OneSignal.getNotificationPermission().then((permission) => {
       notificationPermissionBeforeRequest = permission as any;
     })
              .then(() => {
                log.debug(`Calling %cServiceWorkerRegistration.pushManager.subscribe()`, getConsoleStyle('code'));
+               /*
+                  Trigger the permissionPromptDisplay event to the best of our knowledge.
+                */
                Event.trigger(OneSignal.EVENTS.PERMISSION_PROMPT_DISPLAYED);
                /*
                 7/29/16: If the user dismisses the prompt, the prompt cannot be shown again via pushManager.subscribe()
@@ -175,13 +205,22 @@ export default class SubscriptionHelper {
                 Our solution is to call Notification.requestPermission(), and then call
                 pushManager.subscribe(). Because notification and push permissions are shared, the subesequent call to
                 pushManager.subscribe() will go through successfully.
+
+                6/14/17: I don't think this is necessary anymore. There's been 7 Chrome versions since the bug has been fixed.
                 */
                return MainHelper.requestNotificationPermissionPromise();
              })
              .then(permission => {
                if (permission !== "granted") {
+                 /*
+                    The user either dismissed or blocked the permission. Exit control flow to the .catch() block.
+                    We don't want to throw exceptions to modify the program flow, so fix this in the rewrite.
+                  */
                  throw new PushPermissionNotGrantedError();
                } else {
+                 /*
+                    Permissions were granted. Subscribe on a 15-second timeout.
+                  */
                  return timeoutPromise(
                    serviceWorkerRegistration.pushManager.subscribe({userVisibleOnly: true}),
                    15000
@@ -189,22 +228,26 @@ export default class SubscriptionHelper {
                }
              })
              .then(function (subscription: any) {
-               /*
-                7/29/16: New bug, even if the user dismisses the prompt, they'll be given a subscription
-                See: https://bugs.chromium.org/p/chromium/issues/detail?id=621461
-                Our solution is simply to check the permission before actually subscribing the user.
-                */
                log.debug(`Finished calling %cServiceWorkerRegistration.pushManager.subscribe()`,
                          getConsoleStyle('code'));
                log.debug('Subscription details:', subscription);
-               // The user allowed the notification permission prompt, or it was already allowed; set sessionInit flag to false
+               /*
+                  Permissions were either just granted or already previously granted,
+                  Set the flag that we're showing the prompt to false.
+                */
                OneSignal._sessionInitAlreadyRunning = false;
+               /*
+                  Set in sessionStorage that the notification permission is granted.
+                */
                sessionStorage.setItem("ONE_SIGNAL_NOTIFICATION_PERMISSION", window.Notification.permission);
 
                MainHelper.getAppId()
                          .then(appId => {
                            log.debug("Finished subscribing for push via pushManager.subscribe().");
 
+                           /*
+                              Grab some info to package and bundle to send to OneSignal registration API.
+                            */
                            var subscriptionInfo: any = {};
                            if (subscription) {
                              if (typeof (subscription).subscriptionId != "undefined") {
@@ -250,6 +293,9 @@ export default class SubscriptionHelper {
                            else
                              log.warn('Could not subscribe your browser for push notifications.');
 
+                           /*
+                              If we're inside the HTTP popup, close the popup to allow the iFrame to finish subscribing.
+                            */
                            if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalSubscriptionPopup) {
                              // 12/16/2015 -- At this point, the user has just clicked Allow on the HTTP popup!!
                              // 11/22/2016 - HTTP popup should move non-essential subscription parts to the iframe
@@ -268,16 +314,27 @@ export default class SubscriptionHelper {
                                }
                              });
                            } else {
-                             // If we are not doing HTTP subscription, continue finish subscribing by registering with OneSignal
+                             /*
+                                Otherwise if we're on an HTTPS site, just finish the registration.
+                              */
                              MainHelper.registerWithOneSignal(appId, subscriptionInfo);
                            }
                          });
              })
-             .catch(function (e) {
+      .catch(function (e) {
+               /*
+                  Any one of a number of native subscription errors occurred, or the user blocked or dismissed the notification prompt (catches error we throw).
+                */
                OneSignal._sessionInitAlreadyRunning = false;
                if (e instanceof TimeoutError) {
+                 /*
+                  * The subscription timed out after 15 seconds (TODO: this should only be enforced on the popup, but should be tripled on HTTPS sites)
+                  */
                  log.error("A possible Chrome bug (https://bugs.chromium.org/p/chromium/issues/detail?id=623062) is preventing this subscription from completing.");
                }
+               /*
+                  GCM Sender ID manifest.json issues
+                */
                if (e.message === 'Registration failed - no sender id provided' || e.message === 'Registration failed - manifest empty or missing') {
                  let manifestDom = document.querySelector('link[rel=manifest]');
                  if (manifestDom) {
@@ -313,8 +370,14 @@ export default class SubscriptionHelper {
                             "in the <head> of your page. Please see step 2 at " +
                             "https://documentation.onesignal.com/docs/web-push-sdk-setup-https.");
                  }
-               } else if (e instanceof PushPermissionNotGrantedError)  {
+               } else if (e instanceof PushPermissionNotGrantedError) {
+                 /*
+                    User blocked or dismissed the notification permission prompt.
+                  */
                } else {
+                 /*
+                    Any other error.
+                  */
                  log.error('Error while subscribing for push:', e);
                }
 
