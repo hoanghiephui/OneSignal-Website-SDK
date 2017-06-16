@@ -61,6 +61,9 @@ import ProxyFrame from './modules/frames/ProxyFrame';
 import { SdkInitError, SdkInitErrorKind } from './errors/SdkInitError';
 import CookieSyncer from './modules/CookieSyncer';
 import Crypto from './services/Crypto';
+import { ServiceWorkerManager, ServiceWorkerActiveState } from './managers/ServiceWorkerManager';
+import Path from './models/Path';
+import { SubscriptionManager } from './managers/SubscriptionManager';
 
 
 export default class OneSignal {
@@ -140,6 +143,12 @@ export default class OneSignal {
    */
   static async init(options) {
     logMethodCall('init');
+
+    OneSignal.context.subscriptionManager = new SubscriptionManager({});
+    OneSignal.context.serviceWorkerManager = new ServiceWorkerManager({
+      workerAPath: new Path((options.path || '/') + OneSignal.SERVICE_WORKER_PATH),
+      workerBPath: new Path((options.path || '/') + OneSignal.SERVICE_WORKER_UPDATER_PATH),
+    });
 
     // If Safari - add 'fetch' pollyfill if it isn't already added.
     if (Browser.safari && typeof window.fetch == "undefined") {
@@ -620,7 +629,9 @@ export default class OneSignal {
         SdkEnvironment.getWindowEnv() !== WindowEnvironmentKind.OneSignalProxyFrame &&
         !hasInsecureParentOrigin) {
 
-      const serviceWorkerActive = await ServiceWorkerHelper.isServiceWorkerActive();
+      const serviceWorkerActiveState = await OneSignal.context.serviceWorkerManager.getActiveState();
+      const serviceWorkerActive = (serviceWorkerActiveState === ServiceWorkerActiveState.WorkerA) ||
+        (serviceWorkerActiveState === ServiceWorkerActiveState.WorkerB);
 
       isPushEnabled = !!(deviceId &&
                       pushToken &&
@@ -857,8 +868,6 @@ export default class OneSignal {
   static _initCalled = false;
   static __initAlreadyCalled = false;
   static httpPermissionRequestPostModal: any;
-  static closeNotifications = ServiceWorkerHelper.closeNotifications;
-  static isServiceWorkerActive = ServiceWorkerHelper.isServiceWorkerActive;
   static _showingHttpPermissionRequest = false;
   static context: Context;
   static checkAndWipeUserSubscription = function () { }
@@ -987,6 +996,9 @@ export default class OneSignal {
   static once(...args) {}
 }
 
+OneSignal.context = new Context();
+OneSignal.context.dynamicResourceLoader = new DynamicResourceLoader();
+
 Object.defineProperty(OneSignal, 'LOGGING', {
   get: function() {
     return OneSignal._LOGGING;
@@ -1004,8 +1016,6 @@ Object.defineProperty(OneSignal, 'LOGGING', {
   enumerable: true,
   configurable: true
 });
-
-OneSignal.context = new Context();
 
 heir.merge(OneSignal, new EventEmitter());
 

@@ -513,45 +513,45 @@ class BundlerModule {
     const plugins = [
       new ExtractTextPlugin(config.get('build:stylesheetsBundleName')),
       new webpack.DefinePlugin(BundlerModule.getBuildDefines(config)),
-      new webpack.optimize.UglifyJsPlugin({
-        sourceMap: true,
-        compress: {
-          sequences: true,
-          properties: true,
-          dead_code: true,
-          conditionals: true,
-          comparisons: true,
-          evaluate: true,
-          booleans: true,
-          loops: true,
-          unused: true,
-          hoist_funs: true,
-          if_return: true,
-          join_vars: true,
-          cascade: true,
-          collapse_vars: true,
-          drop_console: false,
-          drop_debugger: false,
-          warnings: false,
-          negate_iife: true,
-        },
-        mangle: {
-          enable: config.get('env') === 'production',
-          except: ['AlreadySubscribedError',
-            'InvalidArgumentError',
-            'InvalidStateError',
-            'InvalidUuidError',
-            'NotSubscribedError',
-            'PermissionMessageDismissedError',
-            'PushNotSupportedError',
-            'PushPermissionNotGrantedError',
-            'SdkInitError',
-            'TimeoutError']
-        },
-        output: {
-          comments: false
-        }
-      })
+      // new webpack.optimize.UglifyJsPlugin({
+      //   sourceMap: true,
+      //   compress: {
+      //     sequences: true,
+      //     properties: true,
+      //     dead_code: true,
+      //     conditionals: true,
+      //     comparisons: true,
+      //     evaluate: true,
+      //     booleans: true,
+      //     loops: true,
+      //     unused: true,
+      //     hoist_funs: true,
+      //     if_return: true,
+      //     join_vars: true,
+      //     cascade: true,
+      //     collapse_vars: true,
+      //     drop_console: false,
+      //     drop_debugger: false,
+      //     warnings: false,
+      //     negate_iife: true,
+      //   },
+      //   mangle: {
+      //     enable: config.get('env') === 'production',
+      //     except: ['AlreadySubscribedError',
+      //       'InvalidArgumentError',
+      //       'InvalidStateError',
+      //       'InvalidUuidError',
+      //       'NotSubscribedError',
+      //       'PermissionMessageDismissedError',
+      //       'PushNotSupportedError',
+      //       'PushPermissionNotGrantedError',
+      //       'SdkInitError',
+      //       'TimeoutError']
+      //   },
+      //   output: {
+      //     comments: false
+      //   }
+      // })
     ];
     if (config.get('analyze')) {
       const sizeAnalysisReportPath = config.get('build:sizeAnalysisFilePath') || path.resolve(path.join(config.get('build:tempDirectory'), 'size-analysis.html'));

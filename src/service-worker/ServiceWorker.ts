@@ -124,7 +124,10 @@ export class ServiceWorker {
       return;
     }
 
-    if (data === 'notification.closeall') {
+    if (data === "serviceworker.version") {
+      swivel.broadcast('serviceworker.version', ServiceWorker.VERSION);
+    }
+    else if (data === 'notification.closeall') {
       // Used for testing; the host page can close active notifications
       self.registration.getNotifications(null).then(notifications => {
         for (let notification of notifications) {

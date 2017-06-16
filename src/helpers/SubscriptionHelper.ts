@@ -15,6 +15,10 @@ import TimeoutError from '../errors/TimeoutError';
 
 
 export default class SubscriptionHelper {
+  /*
+   * Checks whether we should continue.
+   * Register correct kind of service worker.
+   */
   static registerForW3CPush(options) {
     log.debug(`Called %cregisterForW3CPush(${JSON.stringify(options)})`, getConsoleStyle('code'));
     return Database.get('Ids', 'registrationId')
@@ -41,7 +45,7 @@ export default class SubscriptionHelper {
                           If no SW was installed, install the normal worker.
                           If we detect a non-OneSignal worker, overwrite it. But unregister for push first.
 
-                          After the registerServiceWorker() call is
+                          After the registerServiceWorker() call is enableNotifications
                          */
                          if (typeof serviceWorkerRegistration === "undefined") // Nothing registered, very first run
                            ServiceWorkerHelper.registerServiceWorker(sw_path + SdkEnvironment.getBuildEnvPrefix() + OneSignal.SERVICE_WORKER_PATH);
@@ -97,6 +101,10 @@ export default class SubscriptionHelper {
                    });
   }
 
+  /*
+   * Waits until service worker is ready.
+   * Opens messagePort to listen to SW messages.
+   */
   static enableNotifications(existingServiceWorkerRegistration) { // is ServiceWorkerRegistration type
     log.debug(`Called %cenableNotifications()`, getConsoleStyle('code'));
     // TODO: This should be removed because it's deprecated
@@ -182,6 +190,9 @@ export default class SubscriptionHelper {
     return OneSignal.config && OneSignal.config.allowLocalhostAsSecureOrigin === true;
   }
 
+  /*
+   * Subscribe, get info, and
+   */
   static subscribeForPush(serviceWorkerRegistration) {
     log.debug(`Called %c_subscribeForPush()`, getConsoleStyle('code'));
     var notificationPermissionBeforeRequest = '';

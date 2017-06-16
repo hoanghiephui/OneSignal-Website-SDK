@@ -218,7 +218,7 @@ export default class InitHelper {
         // Resubscribes them, and in case their GCM registration token was invalid, gets a new one
         SubscriptionHelper.registerForW3CPush({});
       } else {
-        ServiceWorkerHelper.updateServiceWorker();
+        OneSignal.context.serviceWorkerManager.updateWorker();
       }
       return;
     }
