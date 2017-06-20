@@ -20,85 +20,7 @@ export default class SubscriptionHelper {
    * Register correct kind of service worker.
    */
   static registerForW3CPush(options) {
-    log.debug(`Called %cregisterForW3CPush(${JSON.stringify(options)})`, getConsoleStyle('code'));
-    return Database.get('Ids', 'registrationId')
-      .then(function _registerForW3CPush_GotRegistrationId(registrationIdResult) {
-                     /*
-                        If there's:
-                          - No saved push token
-                          - Or this method was called internally
-                          - Or notification permissions are unprompted or blocked
-                          - Or there's no active service worker
-                      */
-                     if (!registrationIdResult || !options.fromRegisterFor || window.Notification.permission != "granted" || navigator.serviceWorker.controller == null) {
-                       navigator.serviceWorker.getRegistration().then(function (serviceWorkerRegistration) {
-                         var sw_path = "";
-
-                         // Obtain directory path to SW file
-                         if (OneSignal.config.path)
-                           sw_path = OneSignal.config.path;
-
-                        /*
-                          Are there any existing registrations?
-
-                          Based on on which SW was installed last, install the normal or alternate worker.
-                          If no SW was installed, install the normal worker.
-                          If we detect a non-OneSignal worker, overwrite it. But unregister for push first.
-
-                          After the registerServiceWorker() call is enableNotifications
-                         */
-                         if (typeof serviceWorkerRegistration === "undefined") // Nothing registered, very first run
-                           ServiceWorkerHelper.registerServiceWorker(sw_path + SdkEnvironment.getBuildEnvPrefix() + OneSignal.SERVICE_WORKER_PATH);
-                         else {
-                           if (serviceWorkerRegistration.active) {
-                             let previousWorkerUrl = serviceWorkerRegistration.active.scriptURL;
-                             if (contains(previousWorkerUrl, sw_path + SdkEnvironment.getBuildEnvPrefix() + OneSignal.SERVICE_WORKER_PATH)) {
-                               // OneSignalSDKWorker.js was installed
-                               Database.get('Ids', 'WORKER1_ONE_SIGNAL_SW_VERSION')
-                                       .then(function (version) {
-                                         if (version) {
-                                           if (version != OneSignal._VERSION) {
-                                             log.info(`Installing new service worker (${version} -> ${OneSignal._VERSION})`);
-                                             ServiceWorkerHelper.registerServiceWorker(sw_path + SdkEnvironment.getBuildEnvPrefix() + OneSignal.SERVICE_WORKER_UPDATER_PATH);
-                                           }
-                                           else
-                                             ServiceWorkerHelper.registerServiceWorker(sw_path + SdkEnvironment.getBuildEnvPrefix() + OneSignal.SERVICE_WORKER_PATH);
-                                         }
-                                         else
-                                           ServiceWorkerHelper.registerServiceWorker(sw_path + SdkEnvironment.getBuildEnvPrefix() + OneSignal.SERVICE_WORKER_UPDATER_PATH);
-                                       });
-                             }
-                             else if (contains(previousWorkerUrl, sw_path + SdkEnvironment.getBuildEnvPrefix() + OneSignal.SERVICE_WORKER_UPDATER_PATH)) {
-                               // OneSignalSDKUpdaterWorker.js was installed
-                               Database.get('Ids', 'WORKER2_ONE_SIGNAL_SW_VERSION')
-                                       .then(function (version) {
-                                         if (version) {
-                                           if (version != OneSignal._VERSION) {
-                                             log.info(`Installing new service worker (${version} -> ${OneSignal._VERSION})`);
-                                             ServiceWorkerHelper.registerServiceWorker(sw_path + SdkEnvironment.getBuildEnvPrefix() + OneSignal.SERVICE_WORKER_PATH);
-                                           }
-                                           else
-                                             ServiceWorkerHelper.registerServiceWorker(sw_path + SdkEnvironment.getBuildEnvPrefix() + OneSignal.SERVICE_WORKER_UPDATER_PATH);
-                                         }
-                                         else
-                                           ServiceWorkerHelper.registerServiceWorker(sw_path + SdkEnvironment.getBuildEnvPrefix() + OneSignal.SERVICE_WORKER_PATH);
-                                       });
-                             } else {
-                               // Some other service worker not belonging to us was installed
-                               // Install ours over it after unregistering theirs to get a different registration token and avoid mismatchsenderid error
-                               log.info('Unregistering previous service worker:', serviceWorkerRegistration);
-                               serviceWorkerRegistration.unregister().then(unregistrationSuccessful => {
-                                 log.info('Result of unregistering:', unregistrationSuccessful);
-                                 ServiceWorkerHelper.registerServiceWorker(sw_path + SdkEnvironment.getBuildEnvPrefix() + OneSignal.SERVICE_WORKER_PATH);
-                               });
-                             }
-                           }
-                           else if (serviceWorkerRegistration.installing == null)
-                             ServiceWorkerHelper.registerServiceWorker(sw_path + SdkEnvironment.getBuildEnvPrefix() + OneSignal.SERVICE_WORKER_PATH);
-                         }
-                       });
-                     }
-                   });
+    // Refactored
   }
 
   /*
@@ -106,30 +28,7 @@ export default class SubscriptionHelper {
    * Opens messagePort to listen to SW messages.
    */
   static enableNotifications(existingServiceWorkerRegistration) { // is ServiceWorkerRegistration type
-    log.debug(`Called %cenableNotifications()`, getConsoleStyle('code'));
-    // TODO: This should be removed because it's deprecated
-    // Start session if push is not supported? Is this necessary?
-    if (!('PushManager' in window)) {
-      log.info("Push messaging is not supported. No PushManager.");
-      MainHelper.beginTemporaryBrowserSession();
-      return;
-    }
-
-    // Return if notifications are blocked
-    if (window.Notification.permission === 'denied') {
-      log.warn("The user has blocked notifications.");
-      return;
-    }
-
-    // Waits until the installed service worker is ready
-    log.debug(`Calling %cnavigator.serviceWorker.ready() ...`, getConsoleStyle('code'));
-    navigator.serviceWorker.ready.then(function (serviceWorkerRegistration) {
-      log.debug('Finished calling %cnavigator.serviceWorker.ready', getConsoleStyle('code'));
-      // Installs message channel to receive service worker messages
-      MainHelper.establishServiceWorkerChannel(serviceWorkerRegistration);
-      // Runs this
-      SubscriptionHelper.subscribeForPush(serviceWorkerRegistration);
-    });
+    // Refactored
   }
 
   /**

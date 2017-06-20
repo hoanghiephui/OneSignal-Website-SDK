@@ -2,6 +2,8 @@ import Path from '../models/Path';
 import { contains } from '../utils';
 import SdkEnvironment from './SdkEnvironment';
 import Environment from '../Environment';
+
+
 export enum ServiceWorkerActiveState {
   /**
    * OneSignalSDKWorker.js, or the equivalent custom file name, is active.
@@ -151,5 +153,46 @@ export class ServiceWorkerManager {
     } else {
       log.info(`[Service Worker Update] Service worker version is current at v${workerVersion} (no update required).`);
     }
+  }
+
+  /**
+   * Installs the OneSignal service worker.
+   *
+   * Depending on the existing worker, the alternate swap worker may be
+   * installed or, for 3rd party workers, the existing worker may be uninstalled
+   * before installing ours.
+   */
+  async installWorker() {
+    const workerState = await this.getActiveState();
+    const workerVersion = await this.getWorkerVersion();
+
+    if (workerState === ServiceWorkerActiveState.ThirdParty) {
+      /*
+         Always unregister 3rd party service workers.
+
+         Unregistering unsubscribes the existing push subscription and allows us
+         to register a new push subscription. This takes care of possible previous mismatched sender IDs
+       */
+      const workerRegistration = await navigator.serviceWorker.getRegistration();
+      await workerRegistration.unregister();
+    }
+
+    let workerDirectory, workerFileName, fullWorkerPath;
+
+    // Determine which worker to install
+    if (workerState === ServiceWorkerActiveState.WorkerA ||
+        workerState === ServiceWorkerActiveState.ThirdParty ||
+        workerState === ServiceWorkerActiveState.None) {
+      workerDirectory = this.config.workerAPath.getPathWithoutFileName();
+      workerFileName = this.config.workerAPath.getFileName();
+    } else if (workerState === ServiceWorkerActiveState.WorkerB) {
+      workerDirectory = this.config.workerBPath.getPathWithoutFileName();
+      workerFileName = this.config.workerBPath.getFileName();
+    }
+
+    fullWorkerPath = `${workerDirectory}/${SdkEnvironment.getBuildEnvPrefix()}${workerFileName}`;
+    log.info(`[Service Worker Installation] Installing service worker ${fullWorkerPath}.`);
+    return await navigator.serviceWorker.register(fullWorkerPath, this.config.registrationScope);
+    log.debug(`[Service Worker Installation] Service worker installed.`);
   }
 }
