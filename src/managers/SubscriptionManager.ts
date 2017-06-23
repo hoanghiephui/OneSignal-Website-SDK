@@ -13,6 +13,7 @@ import MainHelper from '../helpers/MainHelper';
 import { SubscriptionStrategyKind } from "../models/SubscriptionStrategyKind";
 import { SubscribeResubscribe } from "../models/SubscribeResubscribe";
 import NotImplementedError from '../errors/NotImplementedError';
+import Environment from '../Environment';
 
 
 export interface SubscriptionManagerConfig {
@@ -105,78 +106,84 @@ export class SubscriptionManager {
     */
     Event.trigger(OneSignal.EVENTS.PERMISSION_PROMPT_DISPLAYED);
 
-    await this.subscribeFcmVapidOrLegacyKey();
+    await this.subscribeFcmVapidOrLegacyKey(workerRegistration);
   }
 
-  async getSubscriptionStrategy(workerRegistration: ServiceWorkerRegistration, intent: SubscribeResubscribe): SubscriptionStrategyKind {
-    const existingSubscription = await workerRegistration.pushManager.getSubscription();
-
-    if (intent === SubscribeResubscribe.Resubscribe) {
-      if (!existingSubscription) {
-        /*
-          If the user was never subscribed, simply subscribe them.
-         */
-        return SubscriptionStrategyKind.SubscribeNew;
-      } else {
-        /*
-          If the user was already subscribed, we have to consider:
-
-          - The user may have been authenticated via the propietary GCM manifest.json
-          - The user may have been authenticated via the new VAPID standard
-         */
-        if (existingSubscription.options) {
-          /*
-            We can use the stored PushSubscriptionOptions to resubscribe ourselves
-            using the exact same options from the existing subscriptions without
-            needing to pass in any GCM Sender ID or VAPID key.
-           */
-          return SubscriptionStrategyKind.ResubscribeExisting;
-        } else {
-
-        }
-      }
-    } else if (intent === SubscribeResubscribe.Subscribe) {
-      if (!existingSubscription) {
-        /*
-          If the user was never subscribed, simply subscribe them.
-         */
-        return SubscriptionStrategyKind.SubscribeNew;
-      } else {
-        /*
-          If the user was already subscribed, we have to consider:
-
-          - The user may have been authenticated via the propietary GCM manifest.json
-          - The user may have been authenticated via the new VAPID standard
-         */
-        if (existingSubscription.options) {
-          /*
-            We can use the stored PushSubscriptionOptions to resubscribe ourselves
-            using the exact same options from the existing subscriptions without
-            needing to pass in any GCM Sender ID or VAPID key.
-           */
-          return SubscriptionStrategyKind.ResubscribeExisting;
-        } else {
-
-        }
-      }
-
-    } else {
-      throw new Error();
-    }
-  }
-
-  async subscribeFcmVapidOrLegacyKey(workerRegistration: ServiceWorkerRegistration) {
-    const options = {
-      userVisibleOnly: true
+  /**
+   * Creates a new or resubscribes an existing push subscription.
+   *
+   * In cases where details of the existing push subscription can't be found,
+   * the user is first unsubscribed.
+   *
+   * Given an existing legacy GCM subscription, this function does not try to
+   * migrate the subscription to VAPID; this isn't possible unless the user is
+   * first unsubscribed, and unsubscribing frequently can be a little risky.
+   */
+  async subscribeFcmVapidOrLegacyKey(workerRegistration: ServiceWorkerRegistration): Promise<PushSubscription> {
+    let options = {
+        userVisibleOnly: true,
+        applicationServerKey: undefined
     };
 
-    // If the user
-    if (this.config.vapidPublicKey) {
+    let newPushSubscription: PushSubscription;
 
+    /*
+      Is there an existing push subscription?
+
+      If so, and if we're on Chrome 54+, we can use its details to resubscribe
+      without any extra info needed.
+     */
+    const existingPushSubscription = await workerRegistration.pushManager.getSubscription();
+
+    if (existingPushSubscription) {
+        if (existingPushSubscription.options) {
+            /*
+              Hopefully we're on Chrome 54+, so we can use PushSubscriptionOptions to
+              get the exact applicationServerKey to use, without needing to assume a
+              manifest.json exists or passing in our VAPID key and dealing with
+              potential mismatched sender ID issues.
+              */
+            options = existingPushSubscription.options;
+            newPushSubscription = await workerRegistration.pushManager.subscribe(options);
+        } else {
+            /*
+              There isn't a great solution if PushSubscriptionOptions (Chrome 54+)
+              aren't supported.
+
+              We want to subscribe the user, but we don't know whether the user was
+              subscribed via GCM's manifest.json or FCM's VAPID.
+
+              This bug
+              (https://bugs.chromium.org/p/chromium/issues/detail?id=692577) shows
+              that a mismatched sender ID error is possible if you subscribe via
+              FCM's VAPID while the user was originally subscribed via GCM's
+              manifest.json (fails silently).
+
+              Because of this, we should unsubscribe the user from push first and
+              then resubscribe them.
+             */
+            await existingPushSubscription.unsubscribe();
+            // Now that the user is unsubscribed, we're free to subscribe via
+            // VAPID (as long as its supported)
+            if (Environment.supportsVapid() && this.config.vapidPublicKey) {
+                options.applicationServerKey = this.config.vapidPublicKey;
+                newPushSubscription = await workerRegistration.pushManager.subscribe(options);
+            } else {
+                // VAPID isn't supported; so subscribe via legacy manifest.json GCM Sender ID
+                newPushSubscription = await workerRegistration.pushManager.subscribe(options);
+            }
+        }
+    } else {
+        // No existing push subscription; just subscribe the user
+        if (Environment.supportsVapid() && this.config.vapidPublicKey) {
+            options.applicationServerKey = this.config.vapidPublicKey;
+            newPushSubscription = await workerRegistration.pushManager.subscribe(options);
+        } else {
+            // VAPID isn't supported; so subscribe via legacy manifest.json GCM Sender ID
+            newPushSubscription = await workerRegistration.pushManager.subscribe(options);
+        }
     }
-    const pushSubscription = await workerRegistration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: '',
-    });
+
+    return newPushSubscription;
   }
 }
