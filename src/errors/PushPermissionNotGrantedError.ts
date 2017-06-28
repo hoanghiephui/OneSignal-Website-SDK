@@ -3,7 +3,8 @@ import OneSignalError from "./OneSignalError";
 
 export enum PushPermissionNotGrantedErrorReason {
   Blocked,
-  Dismissed
+  Dismissed,
+  Default
 }
 
 export default class PushPermissionNotGrantedError extends OneSignalError {
@@ -16,6 +17,9 @@ export default class PushPermissionNotGrantedError extends OneSignalError {
         break;
       case PushPermissionNotGrantedErrorReason.Blocked:
         super('Notification permissions are blocked.');
+        break;
+      case PushPermissionNotGrantedErrorReason.Default:
+        super('Notification permissions have not been granted yet.');
         break;
     }
   }

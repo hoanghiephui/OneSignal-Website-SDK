@@ -7,6 +7,7 @@ import { AppConfig, ServerAppConfig } from './models/AppConfig';
 import SdkEnvironment from './managers/SdkEnvironment';
 import * as JSONP from 'jsonp';
 import { SdkInitErrorKind, SdkInitError } from './errors/SdkInitError';
+import { PushRegistration } from './models/PushRegistration';
 
 
 export default class OneSignalApi {
@@ -173,5 +174,13 @@ export default class OneSignalApi {
     } catch (e) {
       throw e;
     }
+  }
+
+  static async createUser(pushRegistration: PushRegistration) {
+    return OneSignalApi.post(`players`, pushRegistration.serialize());
+  }
+
+  static async updateUserSession(userId: Uuid, pushRegistration: PushRegistration) {
+    return OneSignalApi.post(`players/${userId.value}/on_session`, pushRegistration.serialize());
   }
 }

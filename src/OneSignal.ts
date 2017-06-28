@@ -144,12 +144,6 @@ export default class OneSignal {
   static async init(options) {
     logMethodCall('init');
 
-    OneSignal.context.subscriptionManager = new SubscriptionManager({});
-    OneSignal.context.serviceWorkerManager = new ServiceWorkerManager({
-      workerAPath: new Path((options.path || '/') + OneSignal.SERVICE_WORKER_PATH),
-      workerBPath: new Path((options.path || '/') + OneSignal.SERVICE_WORKER_UPDATER_PATH),
-    });
-
     // If Safari - add 'fetch' pollyfill if it isn't already added.
     if (Browser.safari && typeof window.fetch == "undefined") {
       log.debug('Loading fetch polyfill for Safari..');
@@ -172,6 +166,18 @@ export default class OneSignal {
       OneSignal.cookieSyncer = new CookieSyncer(appConfig.cookieSyncEnabled);
       OneSignal.config = InitHelper.getMergedLegacyConfig(options, appConfig);
       log.debug(`OneSignal: Final web app config: %c${JSON.stringify(OneSignal.config, null, 4)}`, getConsoleStyle('code'));
+
+      OneSignal.context.subscriptionManager = new SubscriptionManager(OneSignal.context, {
+        safariWebId: appConfig.safariWebId,
+        appId: appConfig.appId,
+        vapidPublicKey: appConfig.vapidPublicKey
+      });
+
+      OneSignal.context.serviceWorkerManager = new ServiceWorkerManager({
+        workerAPath: new Path((options.path || '/') + OneSignal.SERVICE_WORKER_PATH),
+        workerBPath: new Path((options.path || '/') + OneSignal.SERVICE_WORKER_UPDATER_PATH),
+        registrationScope: OneSignal.SERVICE_WORKER_PARAM || { scope: '/'  }
+      });
     } catch (e) {
       if (e) {
         if (e.code === 1) {
@@ -861,7 +867,7 @@ export default class OneSignal {
    * slash). This would allow pages to function correctly as not to block the service worker ready call, which would
    * hang indefinitely if we requested root scope registration but the service was only available in a child scope.
    */
-  static SERVICE_WORKER_PARAM = {scope: '/'};
+  static SERVICE_WORKER_PARAM: { scope: string } = {scope: '/'};
   static _LOGGING = false;
   static LOGGING = false;
   static _usingNativePermissionHook = false;

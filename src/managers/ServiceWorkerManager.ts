@@ -29,7 +29,7 @@ export enum ServiceWorkerActiveState {
 export interface ServiceWorkerManagerConfig {
   workerAPath: Path,
   workerBPath: Path,
-  registrationScope: string
+  registrationScope: { scope: string }
 }
 
 export class ServiceWorkerManager {

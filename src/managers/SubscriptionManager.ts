@@ -14,6 +14,16 @@ import { SubscriptionStrategyKind } from "../models/SubscriptionStrategyKind";
 import { SubscribeResubscribe } from "../models/SubscribeResubscribe";
 import NotImplementedError from '../errors/NotImplementedError';
 import Environment from '../Environment';
+import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
+import { InvalidStateError, InvalidStateReason } from '../errors/InvalidStateError';
+import { RawPushSubscription } from '../models/RawPushSubscription';
+import OneSignalApi from '../OneSignalApi';
+import Database from '../services/Database';
+import OneSignal from '../OneSignal';
+import { PushRegistration } from '../models/PushRegistration';
+import { DeliveryPlatformKind } from '../models/DeliveryPlatformKind';
+import { DevicePlatformKind } from '../models/DevicePlatformKind';
+import { SubscriptionStateKind } from '../models/SubscriptionStateKind';
 
 
 export interface SubscriptionManagerConfig {
@@ -38,26 +48,57 @@ export class SubscriptionManager {
       window.safari.pushNotification !== undefined;
   }
 
-  async subscribe() {
-    /*
-       Check our notification permission before subscribing.
+  async subscribe(): Promise<Uuid> {
+      /*
+         Check our notification permission before subscribing.
 
-       - If notifications are blocked, we can't subscribe.
-       - If notifications are granted, the user should be completely resubscribed.
-       - If notifications permissions are untouched, the user will be prompted and then subscribed.
-     */
-    const notificationPermissionBeforeSubscribing: NotificationPermission = await OneSignal.getNotificationPermission();
-    if (notificationPermissionBeforeSubscribing === NotificationPermission.Denied) {
-      throw new PushPermissionNotGrantedError(PushPermissionNotGrantedErrorReason.Blocked);
-    }
+         - If notifications are blocked, we can't subscribe.
+         - If notifications are granted, the user should be completely resubscribed.
+         - If notifications permissions are untouched, the user will be prompted and then subscribed.
+       */
+      const notificationPermissionBeforeSubscribing: NotificationPermission = await OneSignal.getNotificationPermission();
+      if (notificationPermissionBeforeSubscribing === NotificationPermission.Denied) {
+          throw new PushPermissionNotGrantedError(PushPermissionNotGrantedErrorReason.Blocked);
+      }
 
-    if (this.isSafari()) {
-      const pushToken = await this.subscribeSafari();
-      EventHelper.triggerNotificationPermissionChanged();
-    } else {
-      await this.subscribeFcm();
-    }
-    // Move Safari subscription to be in here
+      let pushSubscription: RawPushSubscription;
+      let pushRegistration = new PushRegistration();
+      pushRegistration.appId = this.config.appId;
+
+      if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.ServiceWorker) {
+          pushSubscription = await this.subscribeFcmFromWorker();
+      } else {
+          if (this.isSafari()) {
+              pushSubscription = await this.subscribeSafari();
+              EventHelper.triggerNotificationPermissionChanged();
+          } else {
+              pushSubscription = await this.subscribeFcm();
+          }
+      }
+
+      if (this.isSafari()) {
+          pushRegistration.deliveryPlatform = DeliveryPlatformKind.Safari;
+      } else if (Browser.firefox) {
+          pushRegistration.deliveryPlatform = DeliveryPlatformKind.Firefox;
+      } else {
+          pushRegistration.deliveryPlatform = DeliveryPlatformKind.ChromeLike;
+      }
+
+      pushRegistration.subscriptionState = SubscriptionStateKind.Subscribed;
+
+      if (this.isAlreadyRegisteredWithOneSignal()) {
+          const { deviceId } = await Database.getSubscription();
+          const { id: newUserId } = await OneSignalApi.updateUserSession(new Uuid(deviceId), pushRegistration)
+          return new Uuid(newUserId);
+      } else {
+          const { id: newUserId } = await OneSignalApi.createUser(pushRegistration)
+          return new Uuid(newUserId);
+      }
+  }
+
+  async isAlreadyRegisteredWithOneSignal() {
+      const { deviceId } = await Database.getSubscription();
+      return !!deviceId;
   }
 
   subscribeSafariPromptPermission(): Promise<string | null> {
@@ -79,24 +120,26 @@ export class SubscriptionManager {
     });
   }
 
-  async subscribeSafari(): Promise<string> {
+  async subscribeSafari(): Promise<RawPushSubscription> {
+    const pushSubscriptionDetails = new RawPushSubscription();
     if (!this.config.safariWebId) {
       throw new SdkInitError(SdkInitErrorKind.MissingSafariWebId);
     }
     const deviceToken = await this.subscribeSafariPromptPermission();
     if (deviceToken) {
-      return deviceToken;
+      pushSubscriptionDetails.safariDeviceToken = deviceToken;
     } else {
       throw new SubscriptionError(SubscriptionErrorReason.InvalidSafariSetup);
     }
+    return pushSubscriptionDetails;
   }
 
-  async subscribeFcm(): Promise<string> {
+  async subscribeFcm(): Promise<RawPushSubscription> {
     await this.context.serviceWorkerManager.installWorker();
 
     log.debug('Waiting for the service worker to activate...');
     const workerRegistration = await navigator.serviceWorker.ready;
-    log.debug('The newly installed service worker is not active.')
+    log.debug('The newly installed service worker is now active.')
 
     // Installs message channel to receive service worker messages
     MainHelper.establishServiceWorkerChannel(workerRegistration);
@@ -106,7 +149,37 @@ export class SubscriptionManager {
     */
     Event.trigger(OneSignal.EVENTS.PERMISSION_PROMPT_DISPLAYED);
 
-    await this.subscribeFcmVapidOrLegacyKey(workerRegistration);
+    return await this.subscribeFcmVapidOrLegacyKey(workerRegistration);
+  }
+
+  async subscribeFcmFromWorker(): Promise<RawPushSubscription> {
+    /*
+      We're running inside of the service worker.
+
+      Check to make sure our registration is activated, otherwise we can't
+      subscribe for push.
+     */
+    if (!self.registration.active ||
+      self.registration.active.state !== "activated") {
+      throw new InvalidStateError(InvalidStateReason.ServiceWorkerNotActivated);
+      /*
+        Or should we wait for the service worker to be ready?
+
+        await new Promise(resolve => self.onactivate = resolve);
+       */
+    }
+
+    /*
+      Check to make sure push permissions have been granted.
+     */
+    const pushPermission = await self.registration.pushManager.permissionState({ userVisibleOnly: true });
+    if (pushPermission === "denied") {
+      throw new PushPermissionNotGrantedError(PushPermissionNotGrantedErrorReason.Blocked);
+    } else if (pushPermission === "prompt") {
+      throw new PushPermissionNotGrantedError(PushPermissionNotGrantedErrorReason.Default);
+    }
+
+    return await this.subscribeFcmVapidOrLegacyKey(self.registration);
   }
 
   /**
@@ -119,13 +192,14 @@ export class SubscriptionManager {
    * migrate the subscription to VAPID; this isn't possible unless the user is
    * first unsubscribed, and unsubscribing frequently can be a little risky.
    */
-  async subscribeFcmVapidOrLegacyKey(workerRegistration: ServiceWorkerRegistration): Promise<PushSubscription> {
+  async subscribeFcmVapidOrLegacyKey(workerRegistration: ServiceWorkerRegistration): Promise<RawPushSubscription> {
     let options = {
         userVisibleOnly: true,
         applicationServerKey: undefined
     };
 
     let newPushSubscription: PushSubscription;
+    let pushSubscriptionDetails = new RawPushSubscription();
 
     /*
       Is there an existing push subscription?
@@ -184,6 +258,38 @@ export class SubscriptionManager {
         }
     }
 
-    return newPushSubscription;
+    pushSubscriptionDetails.fcmEndpoint = new URL(newPushSubscription.endpoint);
+
+    // Retrieve p256dh and auth for encrypted web push protocol
+    if (newPushSubscription.getKey) {
+      // p256dh and auth are both ArrayBuffer
+      let p256dh = null;
+      try {
+        p256dh = newPushSubscription.getKey('p256dh');
+      } catch (e) {
+        // User is most likely running < Chrome < 50
+      }
+      let auth = null;
+      try {
+        auth = newPushSubscription.getKey('auth');
+      } catch (e) {
+        // User is most likely running < Firefox 45
+      }
+
+      if (p256dh) {
+        // Base64 encode the ArrayBuffer (not URL-Safe, using standard Base64)
+        let p256dh_base64encoded = btoa(
+          String.fromCharCode.apply(null, new Uint8Array(p256dh)));
+        pushSubscriptionDetails.fcmP256dh = p256dh_base64encoded;
+      }
+      if (auth) {
+        // Base64 encode the ArrayBuffer (not URL-Safe, using standard Base64)
+        let auth_base64encoded = btoa(
+          String.fromCharCode.apply(null, new Uint8Array(auth)));
+        pushSubscriptionDetails.fcmAuth = auth_base64encoded;
+      }
+    }
+
+    return pushSubscriptionDetails;
   }
 }

@@ -251,8 +251,8 @@ export default class Database {
 
   async getSubscription(): Promise<Subscription> {
     const subscription = new Subscription();
-    subscription.deviceId = await this.get<Uuid>('Ids', 'userId');
-    subscription.pushEndpoint = await this.get<URL>('Options', 'subscriptionEndpoint');
+    subscription.deviceId = await this.get<string>('Ids', 'userId');
+    subscription.pushEndpoint = await this.get<string>('Options', 'subscriptionEndpoint');
     subscription.pushToken = await this.get<string>('Ids', 'registrationId');
 
     // The preferred database key to store our subscription
