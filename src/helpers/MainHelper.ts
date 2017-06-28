@@ -1,29 +1,23 @@
-import Environment from "../Environment";
-import OneSignalApi from "../OneSignalApi";
-import * as log from "loglevel";
-import Event from "../Event";
-import Database from "../services/Database";
-import * as Browser from "bowser";
-import {
-  getConsoleStyle,
-  contains,
-  getDeviceTypeForBrowser,
-  capitalize,
-  awaitOneSignalInitAndSupported
-} from "../utils";
-import * as objectAssign from "object-assign";
-import * as swivel from "swivel";
-import * as Cookie from "js-cookie";
-import HttpModal from "../http-modal/HttpModal";
-import Bell from "../bell/Bell";
-import SubscriptionHelper from "./SubscriptionHelper";
-import EventHelper from "./EventHelper";
-import InitHelper from "./InitHelper";
-import { InvalidStateReason, InvalidStateError } from "../errors/InvalidStateError";
-import { ResourceLoadState } from "../services/DynamicResourceLoader";
+import * as Browser from 'bowser';
+import * as Cookie from 'js-cookie';
+import * as log from 'loglevel';
+import * as objectAssign from 'object-assign';
+import * as swivel from 'swivel';
+
+import Bell from '../bell/Bell';
+import Environment from '../Environment';
+import { InvalidStateError, InvalidStateReason } from '../errors/InvalidStateError';
+import Event from '../Event';
+import HttpModal from '../http-modal/HttpModal';
 import SdkEnvironment from '../managers/SdkEnvironment';
-import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
 import { Uuid } from '../models/Uuid';
+import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
+import OneSignalApi from '../OneSignalApi';
+import Database from '../services/Database';
+import { ResourceLoadState } from '../services/DynamicResourceLoader';
+import { awaitOneSignalInitAndSupported, capitalize, contains, getConsoleStyle, getDeviceTypeForBrowser } from '../utils';
+import EventHelper from './EventHelper';
+import SubscriptionHelper from './SubscriptionHelper';
 
 
 export default class MainHelper {
@@ -67,7 +61,7 @@ export default class MainHelper {
   static getNotificationPermission(safariWebId) {
     return awaitOneSignalInitAndSupported()
       .then(() => {
-        return new Promise((resolve, reject) => {
+        return new Promise(resolve => {
           if (SubscriptionHelper.isUsingSubscriptionWorkaround()) {
             // User is using our subscription workaround
             OneSignal.proxyFrameHost.message(OneSignal.POSTMAM_COMMANDS.REMOTE_NOTIFICATION_PERMISSION, {safariWebId: safariWebId}, reply => {
@@ -224,8 +218,8 @@ export default class MainHelper {
                     MainHelper.beginTemporaryBrowserSession();
 
                     if (userId) {
-                      return Database.put("Ids", {type: "userId", id: userId});
-                    }
+                      return Database.put("Ids", { type: "userId", id: userId });
+                    } else return null;
                   })
                   .then(() => {
                     // We've finished registering with OneSignal, our session_count and last_active has been updated
@@ -331,10 +325,10 @@ export default class MainHelper {
     OneSignal._channel.on('data', function handler(context, data) {
       log.debug(`%c${capitalize(SdkEnvironment.getWindowEnv().toString())} ⬸ ServiceWorker:`, getConsoleStyle('serviceworkermessage'), data, context);
     });
-    OneSignal._channel.on('notification.displayed', function handler(context, data) {
+    OneSignal._channel.on('notification.displayed', function handler(_, data) {
       Event.trigger(OneSignal.EVENTS.NOTIFICATION_DISPLAYED, data);
     });
-    OneSignal._channel.on('notification.clicked', async function handler(context, data) {
+    OneSignal._channel.on('notification.clicked', async function handler(_, data) {
       if (OneSignal.getListeners(OneSignal.EVENTS.NOTIFICATION_CLICKED).length === 0) {
         /*
           A site's page can be open but not listening to the notification.clicked event because it didn't call addListenerForNotificationOpened().
@@ -358,13 +352,13 @@ export default class MainHelper {
         Event.trigger(OneSignal.EVENTS.NOTIFICATION_CLICKED, data);
       }
     });
-    OneSignal._channel.on('command.redirect', function handler(context, data) {
+    OneSignal._channel.on('command.redirect', function handler(_, data) {
       log.debug(`${SdkEnvironment.getWindowEnv().toString()} Picked up command.redirect to ${data}, forwarding to host page.`);
       if (OneSignal.proxyFrameHost) {
         OneSignal.proxyFrameHost.message(OneSignal.POSTMAM_COMMANDS.SERVICEWORKER_COMMAND_REDIRECT, data);
       }
     });
-    OneSignal._channel.on('notification.dismissed', function handler(context, data) {
+    OneSignal._channel.on('notification.dismissed', function handler(_, data) {
       Event.trigger(OneSignal.EVENTS.NOTIFICATION_DISMISSED, data);
     });
   }

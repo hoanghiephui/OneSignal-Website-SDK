@@ -1,18 +1,17 @@
-import IndexedDb from "./IndexedDb";
-import Environment from "../Environment";
-import {AppState} from "../models/AppState";
-import {Subscription} from "../models/Subscription";
-import {AppConfig} from "../models/AppConfig";
-import {Uuid} from "../models/Uuid";
-import {ServiceWorkerConfig} from "../models/ServiceWorkerConfig";
-import {ServiceWorkerState} from "../models/ServiceWorkerState";
-import {Notification} from "../models/Notification";
-import SubscriptionHelper from "../helpers/SubscriptionHelper";
-import {Timestamp} from "../models/Timestamp";
-import Emitter from "../libraries/Emitter";
+import SubscriptionHelper from '../helpers/SubscriptionHelper';
+import Emitter from '../libraries/Emitter';
 import SdkEnvironment from '../managers/SdkEnvironment';
+import { AppConfig } from '../models/AppConfig';
+import { AppState } from '../models/AppState';
+import { Notification } from '../models/Notification';
+import { ServiceWorkerConfig } from '../models/ServiceWorkerConfig';
+import { ServiceWorkerState } from '../models/ServiceWorkerState';
+import { Subscription } from '../models/Subscription';
 import { TestEnvironmentKind } from '../models/TestEnvironmentKind';
+import { Timestamp } from '../models/Timestamp';
+import { Uuid } from '../models/Uuid';
 import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
+import IndexedDb from './IndexedDb';
 
 enum DatabaseEventName {
   SET
@@ -45,7 +44,6 @@ export default class Database {
         } else {
           return null;
         }
-        break;
       case 'Ids':
         if (result && key) {
           return result.id;
@@ -54,7 +52,6 @@ export default class Database {
         } else {
           return null;
         }
-        break;
       case 'NotificationOpened':
         if (result && key) {
           return {data: result.data, timestamp: result.timestamp};
@@ -63,14 +60,12 @@ export default class Database {
         } else {
           return null;
         }
-        break;
       default:
         if (result) {
           return result;
         } else {
           return null;
         }
-        break;
     }
   }
 

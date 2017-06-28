@@ -1,15 +1,15 @@
-import OneSignalApi from "../OneSignalApi";
-import * as log from "loglevel";
-import LimitStore from "../LimitStore";
-import Event from "../Event";
-import Database from "../services/Database";
-import {decodeHtmlEntities, logMethodCall} from "../utils";
-import MainHelper from "./MainHelper";
-import SubscriptionHelper from "./SubscriptionHelper";
+import * as log from 'loglevel';
+
+import Event from '../Event';
+import LimitStore from '../LimitStore';
+import OneSignalApi from '../OneSignalApi';
+import Database from '../services/Database';
+import { decodeHtmlEntities, logMethodCall } from '../utils';
+import MainHelper from './MainHelper';
 
 
 export default class EventHelper {
-  static onNotificationPermissionChange(event) {
+  static onNotificationPermissionChange() {
     EventHelper.checkAndTriggerSubscriptionChanged();
   }
 
@@ -85,7 +85,7 @@ export default class EventHelper {
 
                     if (isUpdating) {
                       return Database.put('Options', {key: 'notificationPermission', value: currentPermission});
-                    }
+                    } else return null;
                   })
                   .then(() => {
                     if (isUpdating) {

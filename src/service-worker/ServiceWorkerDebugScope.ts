@@ -1,6 +1,6 @@
-import Environment from "../Environment";
-import Database from "../services/Database";
-import * as swivel from "swivel";
+import * as swivel from 'swivel';
+
+import Environment from '../Environment';
 
 
 export interface ServiceWorkerDebugScope {

@@ -1,5 +1,5 @@
 export enum DevicePlatformKind {
-  Mobile = <any>"mobile",
-  Tablet = <any>"tablet",
-  Desktop = <any>"desktop",
+  Mobile = "mobile",
+  Tablet = "tablet",
+  Desktop = "desktop",
 }

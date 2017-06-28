@@ -1,13 +1,13 @@
-import * as log from "loglevel";
-import {contains, trimUndefined} from "./utils";
-import {Uuid} from "./models/Uuid";
-import * as objectAssign from "object-assign";
-import Environment from "./Environment";
-import { AppConfig, ServerAppConfig } from './models/AppConfig';
-import SdkEnvironment from './managers/SdkEnvironment';
 import * as JSONP from 'jsonp';
-import { SdkInitErrorKind, SdkInitError } from './errors/SdkInitError';
+import * as log from 'loglevel';
+import * as objectAssign from 'object-assign';
+
+import Environment from './Environment';
+import SdkEnvironment from './managers/SdkEnvironment';
+import { AppConfig, ServerAppConfig } from './models/AppConfig';
 import { PushRegistration } from './models/PushRegistration';
+import { Uuid } from './models/Uuid';
+import { contains, trimUndefined } from './utils';
 
 
 export default class OneSignalApi {

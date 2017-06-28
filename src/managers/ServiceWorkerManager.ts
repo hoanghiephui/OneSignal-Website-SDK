@@ -1,7 +1,7 @@
+import Environment from '../Environment';
 import Path from '../models/Path';
 import { contains } from '../utils';
 import SdkEnvironment from './SdkEnvironment';
-import Environment from '../Environment';
 
 
 export enum ServiceWorkerActiveState {
@@ -105,19 +105,11 @@ export class ServiceWorkerManager {
     }
   }
 
-  private alreadyUpdatedWorkerThisSession(): boolean {
-    const alreadyUpdatedThisSession = sessionStorage.getItem(ServiceWorkerManager.UPDATED_FLAG);
-    return (alreadyUpdatedThisSession === "yes");
-  }
-
-  private markWorkerUpdated() {
-    sessionStorage.setItem(ServiceWorkerManager.UPDATED_FLAG, "yes");
-  }
-
   async getWorkerVersion() {
+    // TODO: Finish
     const workerRegistration = await navigator.serviceWorker.getRegistration();
     return new Promise(resolve => {
-      OneSignal._channel.on('serviceworker.version', (context, data) => {
+      OneSignal._channel.on('serviceworker.version', (_, data) => {
         resolve(data);
       });
       OneSignal._channel.emit('data', 'serviceworker.version');
@@ -148,7 +140,7 @@ export class ServiceWorkerManager {
       log.info(`[Service Worker Update] Updating service worker from v${workerVersion} --> v${Environment.version()}.`);
       log.debug(`[Service Worker Update] Registering new service worker`, fullWorkerPath);
 
-      return await navigator.serviceWorker.register(fullWorkerPath, this.config.registrationScope);
+      await navigator.serviceWorker.register(fullWorkerPath, this.config.registrationScope);
       log.debug(`[Service Worker Update] Service worker registration complete.`);
     } else {
       log.info(`[Service Worker Update] Service worker version is current at v${workerVersion} (no update required).`);
@@ -192,7 +184,7 @@ export class ServiceWorkerManager {
 
     fullWorkerPath = `${workerDirectory}/${SdkEnvironment.getBuildEnvPrefix()}${workerFileName}`;
     log.info(`[Service Worker Installation] Installing service worker ${fullWorkerPath}.`);
-    return await navigator.serviceWorker.register(fullWorkerPath, this.config.registrationScope);
+    await navigator.serviceWorker.register(fullWorkerPath, this.config.registrationScope);
     log.debug(`[Service Worker Installation] Service worker installed.`);
   }
 }

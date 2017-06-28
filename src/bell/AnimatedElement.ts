@@ -20,7 +20,7 @@ export default class AnimatedElement {
               public hideClass: string,
               public state = 'shown',
               public targetTransitionEvents = ['opacity', 'transform'],
-              public nestedContentSelector: string = null,
+              public nestedContentSelector?: string,
               public transitionCheckTimeout = 500) {
   }
 
@@ -33,7 +33,6 @@ export default class AnimatedElement {
       return Promise.resolve(this);
     }
     else return new Promise((resolve) => {
-      var self = this;
       this.state = 'showing';
       Event.trigger(AnimatedElement.EVENTS.SHOWING, this);
       if (this.hideClass)
@@ -106,7 +105,6 @@ export default class AnimatedElement {
       return Promise.resolve(this);
     else return new Promise((resolve) => {
       OneSignal.once(AnimatedElement.EVENTS.SHOWN, (event) => {
-        var self = this;
         if (event === this) {
           return resolve(this);
         }

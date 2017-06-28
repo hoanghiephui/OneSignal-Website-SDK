@@ -11,7 +11,7 @@ import * as Browser from 'bowser';
 /**
  * Describes the payload to be sent to OneSignal for user registration.
  */
-export class PushRegistration implements Serializable<PushRegistration> {
+export class PushRegistration implements Serializable {
   public appId: Uuid;
   public deliveryPlatform: DeliveryPlatformKind;
   public language: string;
@@ -41,7 +41,7 @@ export class PushRegistration implements Serializable<PushRegistration> {
   getDevicePlatformKind(): DevicePlatformKind {
     const isMobile = Browser.mobile;
     const isTablet = Browser.tablet;
-    const isDesktop = !isMobile && !isTablet;
+
     if (isMobile) {
       return DevicePlatformKind.Mobile;
     } else if (isTablet) {
@@ -127,5 +127,5 @@ export class PushRegistration implements Serializable<PushRegistration> {
     };
   }
 
-  deserialize(bundle: object): PushRegistration { throw new NotImplementedError(); }
+  deserialize(_: object): PushRegistration { throw new NotImplementedError(); }
 }

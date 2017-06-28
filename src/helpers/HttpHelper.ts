@@ -1,29 +1,14 @@
-import Environment from "../Environment";
-import * as log from "loglevel";
-import Event from "../Event";
-import Database from "../services/Database";
-import {
-  getConsoleStyle,
-  timeoutPromise,
-  unsubscribeFromPush
-} from "../utils";
-import * as objectAssign from "object-assign";
-import Postmam from "../Postmam";
-import MainHelper from "./MainHelper";
-import ServiceWorkerHelper from "./ServiceWorkerHelper";
-import InitHelper from "./InitHelper";
-import EventHelper from "./EventHelper";
-import SubscriptionHelper from "./SubscriptionHelper";
-import { InvalidStateReason } from "../errors/InvalidStateError";
-import TestHelper from './TestHelper';
-import SdkEnvironment from '../managers/SdkEnvironment';
-import { BuildEnvironmentKind } from "../models/BuildEnvironmentKind";
-import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
-import AltOriginManager from '../managers/AltOriginManager';
-import SubscriptionModal from '../modules/frames/SubscriptionModal';
-import SubscriptionPopup from "../modules/frames/SubscriptionPopup";
-import ProxyFrame from "../modules/frames/ProxyFrame";
+import * as log from 'loglevel';
+
+import Event from '../Event';
 import LegacyManager from '../managers/LegacyManager';
+import SdkEnvironment from '../managers/SdkEnvironment';
+import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
+import ProxyFrame from '../modules/frames/ProxyFrame';
+import SubscriptionModal from '../modules/frames/SubscriptionModal';
+import SubscriptionPopup from '../modules/frames/SubscriptionPopup';
+import { getConsoleStyle } from '../utils';
+import SubscriptionHelper from './SubscriptionHelper';
 
 declare var OneSignal: any;
 

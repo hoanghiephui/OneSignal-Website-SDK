@@ -1,22 +1,11 @@
-import Postmam from '../../Postmam';
-import { MessengerMessageEvent } from '../../models/MessengerMessageEvent';
-import Database from "../../services/Database";
-import Event from "../../Event";
-import EventHelper from "../../helpers/EventHelper";
-import { timeoutPromise, unsubscribeFromPush } from "../../utils";
-import TimeoutError from '../../errors/TimeoutError';
+import * as log from 'loglevel';
+import * as objectAssign from 'object-assign';
+
+import SubscriptionHelper from '../../helpers/SubscriptionHelper';
+import SdkEnvironment from '../../managers/SdkEnvironment';
 import { ProxyFrameInitOptions } from '../../models/ProxyFrameInitOptions';
 import { Uuid } from '../../models/Uuid';
-import ServiceWorkerHelper from "../../helpers/ServiceWorkerHelper";
-import * as objectAssign from 'object-assign';
-import SdkEnvironment from '../../managers/SdkEnvironment';
-import { InvalidStateReason } from "../../errors/InvalidStateError";
-import HttpHelper from "../../helpers/HttpHelper";
-import TestHelper from "../../helpers/TestHelper";
-import InitHelper from "../../helpers/InitHelper";
-import MainHelper from "../../helpers/MainHelper";
-import SubscriptionHelper from '../../helpers/SubscriptionHelper';
-import * as log from 'loglevel';
+import Postmam from '../../Postmam';
 
 export default class RemoteFrame implements Disposable {
   protected messenger: Postmam;
@@ -68,7 +57,7 @@ export default class RemoteFrame implements Disposable {
     const creator = window.opener || window.parent;
     if (creator == window) {
       document.write(`<span style='font-size: 14px; color: red; font-family: sans-serif;'>OneSignal: This page cannot be directly opened, and must be opened as a result of a subscription call.</span>`);
-      return;
+      return Promise.resolve();
     }
 
     // The rest of our SDK isn't refactored enough yet to accept typed objects

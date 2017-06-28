@@ -1,3 +1,4 @@
+
 /**
  * Source: https://github.com/pazguille/emitter-es6
  */
@@ -45,10 +46,10 @@ class Emitter {
    * @example
    * me.once('contentLoad', listener);
    */
-  once(event, listener) {
+  once(event, listener: Function) {
     let that = this;
 
-    function fn() {
+    function fn(this: Function) {
       that.off(event, fn);
       listener.apply(this, arguments);
     }
@@ -134,7 +135,7 @@ class Emitter {
    * @example
    * me.emit('ready', 'param1', {..}, [...]);
    */
-  emit(...vargs: any[]) {
+  emit(..._: any[]) {
     let args = [].slice.call(arguments, 0); // converted to array
     let event = args.shift();
     let listeners = this._events[event];

@@ -1,18 +1,16 @@
-import Environment from "../Environment";
-import * as log from "loglevel";
-import Event from "../Event";
-import Database from "../services/Database";
-import * as Browser from "bowser";
-import {getConsoleStyle, contains, timeoutPromise} from "../utils";
-import MainHelper from "./MainHelper";
-import ServiceWorkerHelper from "./ServiceWorkerHelper";
-import EventHelper from "./EventHelper";
-import PushPermissionNotGrantedError from "../errors/PushPermissionNotGrantedError";
-import TestHelper from "./TestHelper";
+import * as Browser from 'bowser';
+import * as log from 'loglevel';
+
+import PushPermissionNotGrantedError from '../errors/PushPermissionNotGrantedError';
+import { PushPermissionNotGrantedErrorReason } from '../errors/PushPermissionNotGrantedError';
+import TimeoutError from '../errors/TimeoutError';
+import Event from '../Event';
 import SdkEnvironment from '../managers/SdkEnvironment';
 import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
-import TimeoutError from '../errors/TimeoutError';
-import { PushPermissionNotGrantedErrorReason } from '../errors/PushPermissionNotGrantedError';
+import { getConsoleStyle, timeoutPromise } from '../utils';
+import EventHelper from './EventHelper';
+import MainHelper from './MainHelper';
+import TestHelper from './TestHelper';
 
 
 export default class SubscriptionHelper {
@@ -20,7 +18,7 @@ export default class SubscriptionHelper {
    * Checks whether we should continue.
    * Register correct kind of service worker.
    */
-  static registerForW3CPush(options) {
+  static registerForW3CPush(_) {
     // Refactored
   }
 
@@ -28,7 +26,7 @@ export default class SubscriptionHelper {
    * Waits until service worker is ready.
    * Opens messagePort to listen to SW messages.
    */
-  static enableNotifications(existingServiceWorkerRegistration) { // is ServiceWorkerRegistration type
+  static enableNotifications(_) { // is ServiceWorkerRegistration type
     // Refactored
   }
 
@@ -185,7 +183,6 @@ export default class SubscriptionHelper {
                              }, message => {
                                if (message.data.progress === true) {
                                  log.debug('Got message from host page that remote reg. is in progress, closing popup.');
-                                 var creator = opener || parent;
                                  if (opener) {
                                    /* Note: This is hard to find, but this is actually the code that closes the HTTP popup window */
                                    window.close();

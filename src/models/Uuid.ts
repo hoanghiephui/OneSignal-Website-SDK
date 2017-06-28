@@ -2,7 +2,7 @@ import * as isUuid from 'validator/lib/isUUID';
 import InvalidUuidError from '../errors/InvalidUuidError';
 import { Serializable } from './Serializable';
 
-export class Uuid implements Serializable<Uuid> {
+export class Uuid implements Serializable {
   private uuid: string;
 
   get value() {

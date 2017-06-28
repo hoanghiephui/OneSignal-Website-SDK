@@ -1,14 +1,12 @@
-import Postmam from '../../Postmam';
-import { MessengerMessageEvent } from '../../models/MessengerMessageEvent';
-import Database from "../../services/Database";
-import Event from "../../Event";
-import EventHelper from "../../helpers/EventHelper";
-import { timeoutPromise } from "../../utils";
-import TimeoutError from '../../errors/TimeoutError';
+import * as log from 'loglevel';
 import * as objectAssign from 'object-assign';
+
+import Event from '../../Event';
+import EventHelper from '../../helpers/EventHelper';
 import MainHelper from '../../helpers/MainHelper';
 import SdkEnvironment from '../../managers/SdkEnvironment';
-import * as log from 'loglevel';
+import { MessengerMessageEvent } from '../../models/MessengerMessageEvent';
+import Postmam from '../../Postmam';
 
 /**
  * Manager for an instance of the OneSignal proxy frame, for use from the main
@@ -148,37 +146,37 @@ export default class SubscriptionPopupHost implements Disposable {
     this.messenger.destroy();
   }
 
-  async onBeginMessagePortCommunications(message: MessengerMessageEvent) {
+  async onBeginMessagePortCommunications(_: MessengerMessageEvent) {
     log.debug(`(${SdkEnvironment.getWindowEnv().toString()}) Successfully established cross-origin messaging with the popup window.`);
     this.messenger.connect();
     return false;
   }
 
-  async onPopupLoaded(message: MessengerMessageEvent) {
+  async onPopupLoaded(_: MessengerMessageEvent) {
     this.loadPromise.resolver();
     Event.trigger('popupLoad');
   }
 
-  async onPopupAccepted(message: MessengerMessageEvent) {
+  async onPopupAccepted(_: MessengerMessageEvent) {
     MainHelper.triggerCustomPromptClicked('granted');
   }
 
-  async onPopupRejected(message: MessengerMessageEvent) {
+  async onPopupRejected(_: MessengerMessageEvent) {
     MainHelper.triggerCustomPromptClicked('denied');
   }
 
-  async onPopupClosing(message: MessengerMessageEvent) {
+  async onPopupClosing(_: MessengerMessageEvent) {
     log.info('Popup window is closing, running cleanup events.');
     Event.trigger(OneSignal.EVENTS.POPUP_CLOSING);
     this.dispose();
   }
 
-  async onBeginBrowsingSession(message: MessengerMessageEvent) {
+  async onBeginBrowsingSession(_: MessengerMessageEvent) {
     log.debug(SdkEnvironment.getWindowEnv().toString() + " Marking current session as a continuing browsing session.");
     MainHelper.beginTemporaryBrowserSession();
   }
 
-  async onWindowTimeout(message: MessengerMessageEvent) {
+  async onWindowTimeout(_: MessengerMessageEvent) {
     log.debug(SdkEnvironment.getWindowEnv().toString() + " Popup window timed out and was closed.");
     Event.trigger(OneSignal.EVENTS.POPUP_WINDOW_TIMEOUT);
   }

@@ -1,6 +1,4 @@
-import SdkEnvironment from './managers/SdkEnvironment';
-import { BuildEnvironmentKind } from './models/BuildEnvironmentKind';
-import * as Browser from "bowser";
+import * as Browser from 'bowser';
 
 export default class Environment {
 
@@ -24,8 +22,8 @@ export default class Environment {
   }
 
   /* Specifications: https://tools.ietf.org/html/bcp47 */
-  static getLanguage(testLanguage?) {
-    let languageTag = testLanguage || navigator.language;
+  static getLanguage() {
+    let languageTag = navigator.language;
     if (languageTag) {
       languageTag = languageTag.toLowerCase();
       let languageSubtags = languageTag.split('-');
@@ -63,7 +61,6 @@ export default class Environment {
     } else {
       var browser: any = Browser;
     }
-    let userAgent = navigator.userAgent || '';
     return (browser.chrome && new Number(browser.version) >= 52) ||
       (browser.firefox && new Number(browser.version) >= 48);
   }

@@ -1,11 +1,12 @@
-import { contains } from './utils';
-import * as EventEmitter from 'wolfy87-eventemitter';
 import * as heir from 'heir';
-import Environment from './Environment';
-import * as objectAssign from 'object-assign';
 import * as log from 'loglevel';
+import * as objectAssign from 'object-assign';
+import * as EventEmitter from 'wolfy87-eventemitter';
+
+import Environment from './Environment';
+import SdkEnvironment from './managers/SdkEnvironment';
 import { Uuid } from './models/Uuid';
-import SdkEnvironment from "./managers/SdkEnvironment";
+import { contains } from './utils';
 
 
 
@@ -296,11 +297,11 @@ export default class Postmam {
             contains(otherAllowedOrigins, messageOrigin));
   }
 
-  on(...args) {
+  on(..._) {
     // Overriden by event emitter lib
   }
 
-  once(...args) {
+  once(..._) {
     // Overriden by event emitter lib
   }
 }

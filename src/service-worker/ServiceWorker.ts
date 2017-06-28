@@ -1,17 +1,17 @@
-///<reference path="../../typings/globals/service_worker_api/index.d.ts"/>
-import Environment from '../Environment';
-import OneSignalApi from '../OneSignalApi';
+import * as Browser from 'bowser';
 import * as log from 'loglevel';
-import { getConsoleStyle, contains, trimUndefined, getDeviceTypeForBrowser, substringAfter, isValidUuid, capitalize } from '../utils';
 import * as objectAssign from 'object-assign';
 import * as swivel from 'swivel';
-import * as Browser from 'bowser';
-import {Notification} from "../models/Notification";
-import Database from '../services/Database';
-import SdkEnvironment from '../managers/SdkEnvironment';
-import { BuildEnvironmentKind } from '../models/BuildEnvironmentKind';
-import { SubscriptionManager } from '../managers/SubscriptionManager';
 
+import Environment from '../Environment';
+import SdkEnvironment from '../managers/SdkEnvironment';
+import { SubscriptionManager } from '../managers/SubscriptionManager';
+import { BuildEnvironmentKind } from '../models/BuildEnvironmentKind';
+import OneSignalApi from '../OneSignalApi';
+import Database from '../services/Database';
+import { capitalize, contains, getConsoleStyle, getDeviceTypeForBrowser, isValidUuid, trimUndefined } from '../utils';
+
+///<reference path="../../typings/globals/service_worker_api/index.d.ts"/>
 declare var self: ServiceWorkerGlobalScope;
 
 
@@ -834,7 +834,7 @@ export class ServiceWorker {
    * Returns a promise that is fulfilled with either the default title from the database (first priority) or the page title from the database (alternate result).
    */
   static _getTitle() {
-    return new Promise((resolve, reject) => {
+    return new Promise(resolve => {
       Promise.all([Database.get('Options', 'defaultTitle'), Database.get('Options', 'pageTitle')])
         .then(([defaultTitle, pageTitle]) => {
           if (defaultTitle !== null) {
@@ -904,7 +904,7 @@ export class ServiceWorker {
    * notification contents will arrive with the push signal. The legacy format must be supported for a while.
    */
   static retrieveNotifications() {
-    return new Promise((resolve, reject) => {
+    return new Promise(resolve => {
       var notifications = [];
       // Each entry is like:
       /*

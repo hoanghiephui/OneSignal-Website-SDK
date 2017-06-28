@@ -1,9 +1,7 @@
 import { BuildEnvironmentKind } from '../models/BuildEnvironmentKind';
-import Environment from '../Environment';
 import { TestEnvironmentKind } from '../models/TestEnvironmentKind';
-import { TestEnvironment } from '../../test/support/sdk/TestEnvironment';
 import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
-import { AppConfig } from '../models/AppConfig';
+import { InvalidArgumentError, InvalidArgumentReason } from '../errors/InvalidArgumentError';
 
 export default class SdkEnvironment {
   /**
@@ -88,6 +86,8 @@ export default class SdkEnvironment {
         return 'Staging-';
       case BuildEnvironmentKind.Production:
         return '';
+      default:
+        throw new InvalidArgumentError('buildEnv', InvalidArgumentReason.EnumOutOfRange);
     }
   }
 
@@ -103,6 +103,8 @@ export default class SdkEnvironment {
         return new URL('https://onesignal-staging.pw/api/v1');
       case BuildEnvironmentKind.Production:
         return new URL('https://onesignal.com/api/v1');
+      default:
+        throw new InvalidArgumentError('buildEnv', InvalidArgumentReason.EnumOutOfRange);
     }
   }
 }

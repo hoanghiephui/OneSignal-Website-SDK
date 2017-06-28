@@ -1,30 +1,27 @@
-import Context from '../models/Context';
-import {NotificationPermission} from "../models/NotificationPermission";
-import PushPermissionNotGrantedError from '../errors/PushPermissionNotGrantedError';
-import { PushPermissionNotGrantedErrorReason } from '../errors/PushPermissionNotGrantedError';
 import * as Browser from 'bowser';
+
+import Environment from '../Environment';
+import { InvalidStateError, InvalidStateReason } from '../errors/InvalidStateError';
+import { PushPermissionNotGrantedErrorReason } from '../errors/PushPermissionNotGrantedError';
+import PushPermissionNotGrantedError from '../errors/PushPermissionNotGrantedError';
 import { SdkInitError, SdkInitErrorKind } from '../errors/SdkInitError';
-import { Uuid } from '../models/Uuid';
-import SdkEnvironment from './SdkEnvironment';
 import SubscriptionError from '../errors/SubscriptionError';
 import { SubscriptionErrorReason } from '../errors/SubscriptionError';
+import Event from '../Event';
 import EventHelper from '../helpers/EventHelper';
 import MainHelper from '../helpers/MainHelper';
-import { SubscriptionStrategyKind } from "../models/SubscriptionStrategyKind";
-import { SubscribeResubscribe } from "../models/SubscribeResubscribe";
-import NotImplementedError from '../errors/NotImplementedError';
-import Environment from '../Environment';
-import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
-import { InvalidStateError, InvalidStateReason } from '../errors/InvalidStateError';
+import Context from '../models/Context';
+import { DeliveryPlatformKind } from '../models/DeliveryPlatformKind';
+import { NotificationPermission } from '../models/NotificationPermission';
+import { PushRegistration } from '../models/PushRegistration';
 import { RawPushSubscription } from '../models/RawPushSubscription';
+import { SubscriptionStateKind } from '../models/SubscriptionStateKind';
+import { Uuid } from '../models/Uuid';
+import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
+import OneSignal from '../OneSignal';
 import OneSignalApi from '../OneSignalApi';
 import Database from '../services/Database';
-import OneSignal from '../OneSignal';
-import { PushRegistration } from '../models/PushRegistration';
-import { DeliveryPlatformKind } from '../models/DeliveryPlatformKind';
-import { DevicePlatformKind } from '../models/DevicePlatformKind';
-import { SubscriptionStateKind } from '../models/SubscriptionStateKind';
-import Event from '../Event';
+import SdkEnvironment from './SdkEnvironment';
 
 
 export interface SubscriptionManagerConfig {
@@ -103,7 +100,7 @@ export class SubscriptionManager {
   }
 
   subscribeSafariPromptPermission(): Promise<string | null> {
-    return new Promise<string>((resolve, reject) => {
+    return new Promise<string>(resolve => {
       window.safari.pushNotification.requestPermission(
         `${SdkEnvironment.getOneSignalApiUrl().toString()}/safari`,
         this.config.safariWebId,

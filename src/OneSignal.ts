@@ -1,70 +1,66 @@
-import TimeoutError from './errors/TimeoutError';
-import Environment from "./Environment";
-import OneSignalApi from "./OneSignalApi";
-import IndexedDb from "./services/IndexedDb";
-import * as log from 'loglevel';
-import Event from "./Event";
-import * as Cookie from 'js-cookie';
-import Database from "./services/Database";
 import * as Browser from 'bowser';
-import {
-  isPushNotificationsSupported,
-  logMethodCall,
-  isValidEmail,
-  awaitOneSignalInitAndSupported,
-  getConsoleStyle,
-  unsubscribeFromPush,
-  prepareEmailForHashing,
-  executeCallback,
-  awaitSdkEvent,
-  contains
-} from "./utils";
-import {ValidatorUtils} from "./utils/ValidatorUtils";
-import * as objectAssign from 'object-assign';
-import * as EventEmitter from 'wolfy87-eventemitter';
 import * as heir from 'heir';
+import * as Cookie from 'js-cookie';
+import * as log from 'loglevel';
+import * as objectAssign from 'object-assign';
 import * as swivel from 'swivel';
-import EventHelper from "./helpers/EventHelper";
-import MainHelper from "./helpers/MainHelper";
-import Popover from "./popover/Popover";
-import {Uuid} from "./models/Uuid";
-import {InvalidArgumentError, InvalidArgumentReason} from "./errors/InvalidArgumentError";
-import LimitStore from "./LimitStore";
-import {InvalidStateError, InvalidStateReason} from "./errors/InvalidStateError";
-import InitHelper from "./helpers/InitHelper";
-import ServiceWorkerHelper from "./helpers/ServiceWorkerHelper";
-import SubscriptionHelper from "./helpers/SubscriptionHelper";
-import HttpHelper from "./helpers/HttpHelper";
-import TestHelper from "./helpers/TestHelper";
-import {NotificationActionButton} from "./models/NotificationActionButton";
-import {NotificationPermission} from "./models/NotificationPermission";
-import PermissionMessageDismissedError from "./errors/PermissionMessageDismissedError";
-import PushPermissionNotGrantedError from "./errors/PushPermissionNotGrantedError";
-import {NotSubscribedError, NotSubscribedReason} from "./errors/NotSubscribedError";
-import AlreadySubscribedError from "./errors/AlreadySubscribedError";
-import {PermissionPromptType} from "./models/PermissionPromptType";
-import {Notification} from "./models/Notification";
-import Context from "./models/Context";
-import { DynamicResourceLoader, ResourceLoadState } from "./services/DynamicResourceLoader";
-import SdkEnvironment from './managers/SdkEnvironment';
-import { BuildEnvironmentKind } from './models/BuildEnvironmentKind';
-import { WindowEnvironmentKind } from './models/WindowEnvironmentKind';
+import * as EventEmitter from 'wolfy87-eventemitter';
+
+import Environment from './Environment';
+import AlreadySubscribedError from './errors/AlreadySubscribedError';
+import { InvalidArgumentError, InvalidArgumentReason } from './errors/InvalidArgumentError';
+import { InvalidStateError, InvalidStateReason } from './errors/InvalidStateError';
+import { NotSubscribedError, NotSubscribedReason } from './errors/NotSubscribedError';
+import PermissionMessageDismissedError from './errors/PermissionMessageDismissedError';
+import PushPermissionNotGrantedError from './errors/PushPermissionNotGrantedError';
+import { PushPermissionNotGrantedErrorReason } from './errors/PushPermissionNotGrantedError';
+import { SdkInitError, SdkInitErrorKind } from './errors/SdkInitError';
+import Event from './Event';
+import EventHelper from './helpers/EventHelper';
+import HttpHelper from './helpers/HttpHelper';
+import InitHelper from './helpers/InitHelper';
+import MainHelper from './helpers/MainHelper';
+import ServiceWorkerHelper from './helpers/ServiceWorkerHelper';
+import SubscriptionHelper from './helpers/SubscriptionHelper';
+import TestHelper from './helpers/TestHelper';
+import LimitStore from './LimitStore';
 import AltOriginManager from './managers/AltOriginManager';
-import { AppConfig } from './models/AppConfig';
 import LegacyManager from './managers/LegacyManager';
+import SdkEnvironment from './managers/SdkEnvironment';
+import { ServiceWorkerActiveState, ServiceWorkerManager } from './managers/ServiceWorkerManager';
+import { SubscriptionManager } from './managers/SubscriptionManager';
+import { AppConfig } from './models/AppConfig';
+import Context from './models/Context';
+import { Notification } from './models/Notification';
+import { NotificationActionButton } from './models/NotificationActionButton';
+import { NotificationPermission } from './models/NotificationPermission';
+import Path from './models/Path';
+import { PermissionPromptType } from './models/PermissionPromptType';
+import { Uuid } from './models/Uuid';
+import { WindowEnvironmentKind } from './models/WindowEnvironmentKind';
+import CookieSyncer from './modules/CookieSyncer';
+import ProxyFrame from './modules/frames/ProxyFrame';
 import ProxyFrameHost from './modules/frames/ProxyFrameHost';
-import SubscriptionPopupHost from './modules/frames/SubscriptionPopupHost';
+import SubscriptionModal from './modules/frames/SubscriptionModal';
 import SubscriptionModalHost from './modules/frames/SubscriptionModalHost';
 import SubscriptionPopup from './modules/frames/SubscriptionPopup';
-import SubscriptionModal from './modules/frames/SubscriptionModal';
-import ProxyFrame from './modules/frames/ProxyFrame';
-import { SdkInitError, SdkInitErrorKind } from './errors/SdkInitError';
-import CookieSyncer from './modules/CookieSyncer';
+import SubscriptionPopupHost from './modules/frames/SubscriptionPopupHost';
+import OneSignalApi from './OneSignalApi';
+import Popover from './popover/Popover';
 import Crypto from './services/Crypto';
-import { ServiceWorkerManager, ServiceWorkerActiveState } from './managers/ServiceWorkerManager';
-import Path from './models/Path';
-import { SubscriptionManager } from './managers/SubscriptionManager';
-import { PushPermissionNotGrantedErrorReason } from './errors/PushPermissionNotGrantedError';
+import Database from './services/Database';
+import { DynamicResourceLoader, ResourceLoadState } from './services/DynamicResourceLoader';
+import IndexedDb from './services/IndexedDb';
+import {
+  awaitOneSignalInitAndSupported,
+  awaitSdkEvent,
+  executeCallback,
+  getConsoleStyle,
+  isValidEmail,
+  logMethodCall,
+  prepareEmailForHashing,
+} from './utils';
+import { ValidatorUtils } from './utils/ValidatorUtils';
 
 
 export default class OneSignal {
@@ -237,7 +233,7 @@ export default class OneSignal {
         OneSignal.proxyFrameHost = await AltOriginManager.discoverAltOrigin(appConfig);
       }
 
-      window.addEventListener('focus', (event) => {
+      window.addEventListener('focus', () => {
         // Checks if permission changed everytime a user focuses on the page, since a user has to click out of and back on the page to check permissions
         MainHelper.checkAndTriggerNotificationPermissionChanged();
       });
@@ -295,7 +291,6 @@ export default class OneSignal {
     const isEnabled = await OneSignal.isPushNotificationsEnabled();
     const notOptedOut = await OneSignal.getSubscription();
     const doNotPrompt = await MainHelper.wasHttpsNativePromptDismissed();
-    const isShowingHttpPermissionRequest = await OneSignal.httpHelper.isShowingHttpPermissionRequest();
 
     if (doNotPrompt && !options.force) {
       throw new PermissionMessageDismissedError();
@@ -457,7 +452,7 @@ export default class OneSignal {
       if (notificationPermission === NotificationPermission.Default) {
         log.debug(`(${SdkEnvironment.getWindowEnv().toString()}) Showing HTTP permission request.`);
         OneSignal._showingHttpPermissionRequest = true;
-        return await new Promise((resolve, reject) => {
+        return await new Promise(resolve => {
           window.Notification.requestPermission(permission => {
             OneSignal._showingHttpPermissionRequest = false;
             resolve(permission);
@@ -494,7 +489,7 @@ export default class OneSignal {
         }
         return MainHelper.getNotificationPermission(safariWebId);
       })
-      .then(permission => {
+      .then((permission: NotificationPermission) => {
         if (onComplete) {
           onComplete(permission);
         }
@@ -538,7 +533,7 @@ export default class OneSignal {
     if (!tags || Object.keys(tags).length === 0) {
       // TODO: Throw an error here in future v2; for now it may break existing client implementations.
       log.info(new InvalidArgumentError('tags', InvalidArgumentReason.Empty));
-      return;
+      return null;
     }
     // Our backend considers false as removing a tag, so convert false -> "false" to allow storing as a value
     Object.keys(tags).forEach(key => {
@@ -881,6 +876,8 @@ export default class OneSignal {
   static cookieSyncer: CookieSyncer;
   static crypto = Crypto;
 
+  static notificationPermission = NotificationPermission;
+
 
   /**
    * Used by Rails-side HTTP popup. Must keep the same name.
@@ -998,9 +995,9 @@ export default class OneSignal {
   };
 
   /** To appease TypeScript, EventEmitter later overrides this */
-  static on(...args) {}
-  static off(...args) {}
-  static once(...args) {}
+  static on(..._) {}
+  static off(..._) {}
+  static once(..._) {}
 }
 
 OneSignal.context = new Context();

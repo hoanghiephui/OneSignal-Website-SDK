@@ -1,28 +1,21 @@
-import Environment from "../Environment";
-import * as log from "loglevel";
-import LimitStore from "../LimitStore";
-import Event from "../Event";
-import Database from "../services/Database";
-import * as Browser from "bowser";
-import {getConsoleStyle, once} from "../utils";
-import Postmam from "../Postmam";
-import MainHelper from "./MainHelper";
-import ServiceWorkerHelper from "./ServiceWorkerHelper";
-import SubscriptionHelper from "./SubscriptionHelper";
-import EventHelper from "./EventHelper";
-import {InvalidStateError, InvalidStateReason} from "../errors/InvalidStateError";
-import AlreadySubscribedError from "../errors/AlreadySubscribedError";
-import ServiceUnavailableError from "../errors/ServiceUnavailableError";
-import PermissionMessageDismissedError from '../errors/PermissionMessageDismissedError';
-import OneSignalApi from "../OneSignalApi";
-import { Uuid } from '../models/Uuid';
-import SdkEnvironment from '../managers/SdkEnvironment';
-import { WindowEnvironmentKind } from "../models/WindowEnvironmentKind";
-import AltOriginManager from "../managers/AltOriginManager";
-import { AppConfig } from "../models/AppConfig";
-import SubscriptionModalHost from '../modules/frames/SubscriptionModalHost';
+import * as Browser from 'bowser';
+import * as log from 'loglevel';
 import * as objectAssign from 'object-assign';
-import CookieSyncer from '../modules/CookieSyncer';
+
+import AlreadySubscribedError from '../errors/AlreadySubscribedError';
+import { InvalidStateError, InvalidStateReason } from '../errors/InvalidStateError';
+import PermissionMessageDismissedError from '../errors/PermissionMessageDismissedError';
+import Event from '../Event';
+import LimitStore from '../LimitStore';
+import SdkEnvironment from '../managers/SdkEnvironment';
+import { AppConfig } from '../models/AppConfig';
+import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
+import SubscriptionModalHost from '../modules/frames/SubscriptionModalHost';
+import Database from '../services/Database';
+import { getConsoleStyle, once } from '../utils';
+import EventHelper from './EventHelper';
+import MainHelper from './MainHelper';
+import SubscriptionHelper from './SubscriptionHelper';
 
 declare var OneSignal: any;
 
@@ -36,7 +29,7 @@ export default class InitHelper {
                          OneSignal.getUserId(),
                          OneSignal.isOptedOut()
                        ])
-                  .then(([isPushEnabled, notificationPermission, userId, isOptedOut]) => {
+                  .then(([isPushEnabled, notificationPermission, isOptedOut]) => {
                     LimitStore.put('subscription.optedOut', isOptedOut);
                     return Promise.all([
                                          Database.put('Options', { key: 'isPushEnabled', value: isPushEnabled }),
@@ -112,7 +105,7 @@ export default class InitHelper {
       log.debug(`(${SdkEnvironment.getWindowEnv().toString()}) Updating session info for HTTP site.`);
       OneSignal.isPushNotificationsEnabled(isPushEnabled => {
         if (isPushEnabled) {
-          return MainHelper.getAppId()
+          MainHelper.getAppId()
                           .then(appId => MainHelper.registerWithOneSignal(appId, null));
         }
       });
@@ -185,7 +178,6 @@ export default class InitHelper {
 
   static async internalInit() {
     log.debug('Called %cinternalInit()', getConsoleStyle('code'));
-    const appId = await Database.get<string>('Ids', 'appId');
 
     // HTTPS - Only register for push notifications once per session or if the user changes notification permission to Ask or Allow.
     if (sessionStorage.getItem("ONE_SIGNAL_SESSION")
@@ -224,7 +216,7 @@ export default class InitHelper {
     }
 
     if (document.visibilityState !== "visible") {
-      once(document, 'visibilitychange', (e, destroyEventListener) => {
+      once(document, 'visibilitychange', (_, destroyEventListener) => {
         if (document.visibilityState === 'visible') {
           destroyEventListener();
           InitHelper.sessionInit({__sdkCall: true});
@@ -253,8 +245,6 @@ export default class InitHelper {
     } else {
       OneSignal._sessionInitAlreadyRunning = true;
     }
-
-    var hostPageProtocol = `${location.protocol}//`;
 
     if (Browser.safari) {
       if (OneSignal.config.safari_web_id) {
@@ -288,7 +278,7 @@ export default class InitHelper {
         OneSignal.isPushNotificationsEnabled(),
         OneSignal.getNotificationPermission()
       ])
-        .then(([appId, isPushEnabled, notificationPermission]) => {
+        .then(([appId]) => {
           OneSignal.subscriptionModalHost = new SubscriptionModalHost(appId, options);
           OneSignal.subscriptionModalHost.load();
         });
