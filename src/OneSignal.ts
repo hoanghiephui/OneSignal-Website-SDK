@@ -64,6 +64,7 @@ import Crypto from './services/Crypto';
 import { ServiceWorkerManager, ServiceWorkerActiveState } from './managers/ServiceWorkerManager';
 import Path from './models/Path';
 import { SubscriptionManager } from './managers/SubscriptionManager';
+import { PushPermissionNotGrantedErrorReason } from './errors/PushPermissionNotGrantedError';
 
 
 export default class OneSignal {
@@ -300,7 +301,7 @@ export default class OneSignal {
       throw new PermissionMessageDismissedError();
     }
     if (permission === NotificationPermission.Denied) {
-      throw new PushPermissionNotGrantedError();
+      throw new PushPermissionNotGrantedError(PushPermissionNotGrantedErrorReason.Blocked);
     }
     if (isEnabled) {
       throw new AlreadySubscribedError();

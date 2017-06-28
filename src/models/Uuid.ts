@@ -1,7 +1,8 @@
 import * as isUuid from 'validator/lib/isUUID';
 import InvalidUuidError from '../errors/InvalidUuidError';
+import { Serializable } from './Serializable';
 
-export class Uuid {
+export class Uuid implements Serializable<Uuid> {
   private uuid: string;
 
   get value() {
@@ -29,5 +30,13 @@ export class Uuid {
         });
       }
     });
+  }
+
+  serialize() {
+    return this.value;
+  }
+
+  deserialize(uuid: string) {
+    this.uuid = uuid;
   }
 }

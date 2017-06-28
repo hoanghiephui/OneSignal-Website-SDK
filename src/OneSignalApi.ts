@@ -105,7 +105,7 @@ export default class OneSignalApi {
   }
 
   static updatePlayer(appId: Uuid, playerId: Uuid, options?: Object) {
-    return OneSignalApi.put(`players/${playerId}`, objectAssign({app_id: appId}, options));
+    return OneSignalApi.put(`players/${playerId.value}`, objectAssign({app_id: appId.value}, options));
   }
 
   static sendNotification(appId, playerIds, titles, contents, url, icon, data, buttons) {

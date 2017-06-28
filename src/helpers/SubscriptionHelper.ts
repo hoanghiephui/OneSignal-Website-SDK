@@ -12,6 +12,7 @@ import TestHelper from "./TestHelper";
 import SdkEnvironment from '../managers/SdkEnvironment';
 import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
 import TimeoutError from '../errors/TimeoutError';
+import { PushPermissionNotGrantedErrorReason } from '../errors/PushPermissionNotGrantedError';
 
 
 export default class SubscriptionHelper {
@@ -126,7 +127,7 @@ export default class SubscriptionHelper {
                     The user either dismissed or blocked the permission. Exit control flow to the .catch() block.
                     We don't want to throw exceptions to modify the program flow, so fix this in the rewrite.
                   */
-                 throw new PushPermissionNotGrantedError();
+                 throw new PushPermissionNotGrantedError(PushPermissionNotGrantedErrorReason.Default);
                } else {
                  /*
                     Permissions were granted. Subscribe on a 15-second timeout.

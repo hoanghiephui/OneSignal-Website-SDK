@@ -23,6 +23,7 @@ import { InvalidStateReason, InvalidStateError } from "../errors/InvalidStateErr
 import { ResourceLoadState } from "../services/DynamicResourceLoader";
 import SdkEnvironment from '../managers/SdkEnvironment';
 import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
+import { Uuid } from '../models/Uuid';
 
 
 export default class MainHelper {
@@ -443,10 +444,13 @@ export default class MainHelper {
     });
   }
 
-  static getAppId() {
+  static async getAppId(): Promise<Uuid> {
     if (OneSignal.config.appId) {
-      return Promise.resolve(OneSignal.config.appId);
+      return Promise.resolve(new Uuid(OneSignal.config.appId));
     }
-    else return Database.get('Ids', 'appId');
+    else {
+      const uuid = await Database.get<string>('Ids', 'appId');
+      return new Uuid(uuid);
+    }
   }
 }

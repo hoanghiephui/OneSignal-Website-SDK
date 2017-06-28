@@ -24,12 +24,13 @@ import { PushRegistration } from '../models/PushRegistration';
 import { DeliveryPlatformKind } from '../models/DeliveryPlatformKind';
 import { DevicePlatformKind } from '../models/DevicePlatformKind';
 import { SubscriptionStateKind } from '../models/SubscriptionStateKind';
+import Event from '../Event';
 
 
 export interface SubscriptionManagerConfig {
   safariWebId: string;
   appId: Uuid;
-  vapidPublicKey: String;
+  vapidPublicKey: string;
 }
 
 export class SubscriptionManager {
@@ -88,7 +89,7 @@ export class SubscriptionManager {
 
       if (this.isAlreadyRegisteredWithOneSignal()) {
           const { deviceId } = await Database.getSubscription();
-          const { id: newUserId } = await OneSignalApi.updateUserSession(new Uuid(deviceId), pushRegistration)
+          const { id: newUserId } = await OneSignalApi.updateUserSession(deviceId, pushRegistration)
           return new Uuid(newUserId);
       } else {
           const { id: newUserId } = await OneSignalApi.createUser(pushRegistration)

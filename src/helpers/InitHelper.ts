@@ -289,7 +289,7 @@ export default class InitHelper {
         OneSignal.getNotificationPermission()
       ])
         .then(([appId, isPushEnabled, notificationPermission]) => {
-          OneSignal.subscriptionModalHost = new SubscriptionModalHost({ appId: appId }, options);
+          OneSignal.subscriptionModalHost = new SubscriptionModalHost(appId, options);
           OneSignal.subscriptionModalHost.load();
         });
     }

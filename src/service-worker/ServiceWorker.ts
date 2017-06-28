@@ -117,7 +117,7 @@ export class ServiceWorker {
    * @param context Used to reply to the host page.
    * @param data The message contents.
    */
-  static onMessageReceived(context, data) {
+  static async onMessageReceived(context, data) {
     log.debug(`%c${capitalize(SdkEnvironment.getWindowEnv().toString())} ⬸ Host:`, getConsoleStyle('serviceworkermessage'), data, context);
 
     if (!data) {
@@ -129,13 +129,13 @@ export class ServiceWorker {
       swivel.broadcast('serviceworker.version', ServiceWorker.VERSION);
     }
     if (data === "serviceworker.subscribe") {
-      const appConfig = await OneSignalApi.getAppConfig(new Uuid(options.appId));
+      const appConfig = await OneSignalApi.getAppConfig(options.appId);
       const subscriptionManager = new SubscriptionManager(OneSignal.context, {
         safariWebId: appConfig.safariWebId,
         appId: appConfig.appId,
         vapidPublicKey: appConfig.vapidPublicKey
       });
-      subscriptionManager.
+      // TODO:      subscriptionManager.
       swivel.broadcast('serviceworker.version', ServiceWorker.VERSION);
     }
     else if (data === 'notification.closeall') {

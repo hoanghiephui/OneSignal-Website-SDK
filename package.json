@@ -103,7 +103,7 @@
     "sorcery": "github:OneSignal/sorcery#onesignal",
     "strip-ansi": "^3.0.1",
     "svgo": "^0.7.2",
-    "typescript": "^2.3.2",
+    "typescript": "^2.4.1",
     "webpack": "^2.3.2",
     "webpack-bundle-analyzer": "^2.8.2",
     "yargonaut": "^1.1.2",

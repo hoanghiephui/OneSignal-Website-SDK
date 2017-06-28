@@ -30,7 +30,22 @@ export default class RemoteFrame implements Disposable {
     rejector: Function
   }
 
-  constructor(initOptions: any) {
+  constructor(initOptions: {
+    /*
+      These options are passed from the Rails app as plain raw untyped values.
+
+      They have to be converted to the right types.
+      */
+    appId: string,
+    /* Passed to both the iFrame and popup */
+    subdomainName: string,
+    /* Passed to both the iFrame and popup. Represents Site URL in dashboard config. */
+    origin: string,
+    /* These three flags may be deprecated */
+    continuePressed: boolean,
+    isPopup: boolean,
+    isModal: boolean
+  }) {
     this.options = {
       appId: new Uuid(initOptions.appId),
       subdomain: initOptions.subdomainName,

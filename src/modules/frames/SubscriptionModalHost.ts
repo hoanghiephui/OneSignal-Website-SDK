@@ -17,7 +17,6 @@ import InitHelper from "../../helpers/InitHelper";
 import MainHelper from "../../helpers/MainHelper";
 import AltOriginManager from '../../managers/AltOriginManager';
 import { AppConfig } from '../../models/AppConfig';
-import { SubscriptionModalInitOptions } from '../../models/SubscriptionModalInitOptions';
 import SubscriptionHelper from '../../helpers/SubscriptionHelper';
 import * as log from 'loglevel';
 import { BuildEnvironmentKind } from '../../models/BuildEnvironmentKind';
@@ -29,15 +28,13 @@ import { BuildEnvironmentKind } from '../../models/BuildEnvironmentKind';
  */
 export default class SubscriptionModalHost implements Disposable {
   private messenger: Postmam;
-  private options: SubscriptionModalInitOptions;
+  private appId: Uuid;
   private modal: HTMLIFrameElement;
   private url: URL;
   private registrationOptions: any;
 
-  constructor(initOptions: any, registrationOptions: any) {
-    this.options = {
-      appId: new Uuid(initOptions.appId)
-    };
+  constructor(appId: Uuid, registrationOptions: any) {
+    this.appId = appId;
     this.registrationOptions = registrationOptions;
   }
 
@@ -57,7 +54,7 @@ export default class SubscriptionModalHost implements Disposable {
     const notificationPermission = await OneSignal.getNotificationPermission();
     this.url = SdkEnvironment.getOneSignalApiUrl();
     this.url.pathname = 'webPushModal';
-    this.url.search = `${MainHelper.getPromptOptionsQueryString()}&id=${this.options.appId.value}&httpsPrompt=true&pushEnabled=${isPushEnabled}&permissionBlocked=${(notificationPermission as any) === 'denied'}&promptType=modal`;
+    this.url.search = `${MainHelper.getPromptOptionsQueryString()}&id=${this.appId.value}&httpsPrompt=true&pushEnabled=${isPushEnabled}&permissionBlocked=${(notificationPermission as any) === 'denied'}&promptType=modal`;
     log.info(`Loading iFrame for HTTPS subscription modal at ${this.url.toString()}`);
 
     this.modal = this.createHiddenSubscriptionDomModal(this.url.toString());

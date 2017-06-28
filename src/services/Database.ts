@@ -151,7 +151,7 @@ export default class Database {
 
   async getAppConfig(): Promise<AppConfig> {
     const config = new AppConfig();
-    config.appId = await this.get<Uuid>('Ids', 'appId');
+    config.appId = new Uuid(await this.get<string>('Ids', 'appId'));
     config.subdomain = await this.get<string>('Options', 'subdomain');
     config.autoRegister = await this.get<boolean>('Options', 'autoRegister');
     config.serviceWorkerConfig = await this.get<ServiceWorkerConfig>('Options', 'serviceWorkerConfig');
@@ -251,7 +251,7 @@ export default class Database {
 
   async getSubscription(): Promise<Subscription> {
     const subscription = new Subscription();
-    subscription.deviceId = await this.get<string>('Ids', 'userId');
+    subscription.deviceId = new Uuid(await this.get<string>('Ids', 'userId'));
     subscription.pushEndpoint = await this.get<string>('Options', 'subscriptionEndpoint');
     subscription.pushToken = await this.get<string>('Ids', 'registrationId');
 
@@ -275,7 +275,7 @@ export default class Database {
 
   async setSubscription(subscription: Subscription) {
     if (subscription.deviceId)
-      await this.put('Ids', {type: 'userId', id: subscription.deviceId});
+      await this.put('Ids', {type: 'userId', id: subscription.deviceId.value});
     if (subscription.pushEndpoint)
       await this.put('Options', {key: 'subscriptionEndpoint', value: subscription.pushEndpoint});
     if (subscription.pushToken)

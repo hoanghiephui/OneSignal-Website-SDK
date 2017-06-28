@@ -5,7 +5,7 @@ export class Subscription {
     /**
      * The OneSignal player ID.
      */
-    deviceId: string;
+    deviceId: Uuid;
     /**
      * The GCM/FCM registration token, along with the full URL.
      */

@@ -127,5 +127,5 @@ export class PushRegistration implements Serializable<PushRegistration> {
     };
   }
 
-  deserialize(bundle: object) { throw new NotImplementedError(); }
+  deserialize(bundle: object): PushRegistration { throw new NotImplementedError(); }
 }

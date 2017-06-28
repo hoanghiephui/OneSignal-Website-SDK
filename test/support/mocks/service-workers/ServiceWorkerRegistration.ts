@@ -5,7 +5,7 @@ export class ServiceWorkerRegistration implements EventTarget {
   waiting: ServiceWorker;
   active: ServiceWorker;
 
-  readonly scope: String;
+  readonly scope: string;
   readonly useCache: boolean;
 
   constructor() {

@@ -3,6 +3,7 @@ import OneSignalError from "./OneSignalError";
 
 export enum SubscriptionErrorReason {
   InvalidSafariSetup,
+  Blocked,
   Dismissed
 }
 
@@ -16,6 +17,9 @@ export default class SubscriptionError extends OneSignalError {
         break;
       case SubscriptionErrorReason.Blocked:
         super('Notification permissions are blocked.');
+        break;
+      case SubscriptionErrorReason.Dismissed:
+        super('The notification permission prompt was dismissed.');
         break;
     }
   }
