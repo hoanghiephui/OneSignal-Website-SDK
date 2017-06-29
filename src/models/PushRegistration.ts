@@ -1,4 +1,5 @@
-import { Uuid } from './Uuid';
+import * as Browser from 'bowser';
+
 import Environment from '../Environment';
 import NotImplementedError from '../errors/NotImplementedError';
 import { DeliveryPlatformKind } from './DeliveryPlatformKind';
@@ -7,9 +8,6 @@ import { RawPushSubscription } from './RawPushSubscription';
 import { Serializable } from './Serializable';
 import { SubscriptionStateKind } from './SubscriptionStateKind';
 import { Uuid } from './Uuid';
-import Environment from '../Environment';
-import NotImplementedError from '../errors/NotImplementedError';
-import * as Browser from 'bowser';
 
 
 /**

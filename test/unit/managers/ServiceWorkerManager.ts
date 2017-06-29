@@ -3,14 +3,10 @@ import '../../support/polyfills/polyfills';
 import test from 'ava';
 import * as sinon from 'sinon';
 
-import SdkEnvironment from '../../../src/managers/SdkEnvironment';
 import { ServiceWorkerManager, ServiceWorkerActiveState } from '../../../src/managers/ServiceWorkerManager';
 import Path from '../../../src/models/Path';
-import { WindowEnvironmentKind } from '../../../src/models/WindowEnvironmentKind';
-import OneSignal from '../../../src/OneSignal';
 import { TestEnvironment } from '../../support/sdk/TestEnvironment';
 import { ServiceWorkerRegistration } from '../../support/mocks/service-workers/ServiceWorkerRegistration';
-import { ServiceWorkerContainer } from '../../support/mocks/service-workers/ServiceWorkerContainer';
 import ServiceWorker from '../../support/mocks/service-workers/ServiceWorker';
 
 

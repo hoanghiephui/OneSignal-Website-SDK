@@ -1,15 +1,12 @@
-import Environment from "../../../src/Environment";
 import OneSignal from "../../../src/OneSignal";
 import Random from "../tester/Random";
 import Database from "../../../src/services/Database";
 import { NotificationPermission } from "../../../src/models/NotificationPermission";
-import { Test } from "ava";
 import * as jsdom from 'jsdom';
 import * as DOMStorage from 'dom-storage';
-import Launcher from "../../../src/bell/Launcher";
 import fetch from 'node-fetch';
 import ServiceWorkerGlobalScope from '../mocks/service-workers/ServiceWorkerGlobalScope';
-import ServiceWorker from '../../../src/service-worker/ServiceWorker';
+import { ServiceWorker } from '../../../src/service-worker/ServiceWorker';
 import { ServiceWorkerContainer } from '../mocks/service-workers/ServiceWorkerContainer';
 import * as objectAssign from 'object-assign';
 

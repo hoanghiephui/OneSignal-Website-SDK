@@ -1,23 +1,13 @@
 import "../../support/polyfills/polyfills";
 import test from "ava";
-import Database from "../../../src/services/Database";
 import { TestEnvironment, HttpHttpsEnvironment } from "../../support/sdk/TestEnvironment";
 import OneSignal from "../../../src/OneSignal";
-import Random from "../../support/tester/Random";
-import Environment from "../../../src/Environment";
-import SubscriptionHelper from "../../../src/helpers/SubscriptionHelper";
 import * as sinon from 'sinon';
 import Bell from "../../../src/bell/Bell";
-import InitHelper from "../../../src/helpers/InitHelper";
 import MainHelper from "../../../src/helpers/MainHelper";
 import { InvalidStateError, InvalidStateReason } from "../../../src/errors/InvalidStateError";
-import Launcher from "../../../src/bell/Launcher";
-import MockDummy from "../../support/mocks/MockDummy";
-import ActiveAnimatedElement from "../../../src/bell/ActiveAnimatedElement";
-import AnimatedElement from "../../../src/bell/AnimatedElement";
 import MockLauncher from "../../support/mocks/MockLauncher";
 import { DynamicResourceLoader, ResourceType, ResourceLoadState } from '../../../src/services/DynamicResourceLoader';
-import { contains } from '../../../src/utils';
 
 test.beforeEach(t => {
   t.context.loadSdkStylesheet = sinon.stub(DynamicResourceLoader.prototype, 'loadSdkStylesheet');

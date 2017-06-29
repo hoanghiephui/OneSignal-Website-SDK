@@ -5,7 +5,6 @@ export default class ServiceWorker implements EventTarget {
   state: ServiceWorkerState;
 
   postMessage(message: any, transfer: any = []): void {
-
   }
 
   addEventListener = () => { throw new NotImplementedError() };

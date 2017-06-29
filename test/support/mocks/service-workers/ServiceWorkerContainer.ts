@@ -1,5 +1,6 @@
 import { ServiceWorkerRegistration } from './ServiceWorkerRegistration';
 import NotImplementedError from "../../../../src/errors/NotImplementedError";
+import ServiceWorker from './ServiceWorker';
 
 export class ServiceWorkerContainer implements EventTarget {
     private _serviceWorkerRegistration: ServiceWorkerRegistration;

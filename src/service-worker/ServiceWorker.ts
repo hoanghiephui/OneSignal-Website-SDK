@@ -224,6 +224,7 @@ export class ServiceWorker {
               log.debug('Failed to display a notification:', e);
               if (ServiceWorker.UNSUBSCRIBED_FROM_NOTIFICATIONS) {
                 log.debug('Because we have just unsubscribed from notifications, we will not show anything.');
+                return undefined;
               } else {
                 log.debug(
                     "Because a notification failed to display, we'll display the last known notification, so long as it isn't the welcome notification.");
@@ -771,6 +772,7 @@ export class ServiceWorker {
       return await self.clients.openWindow(url);
     } catch (e) {
       log.warn(`Failed to open the URL '${url}':`, e);
+      return undefined;
     }
   }
 
