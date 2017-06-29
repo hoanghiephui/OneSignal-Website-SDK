@@ -4,6 +4,8 @@ import SdkEnvironment from '../managers/SdkEnvironment';
 import { ServiceWorkerActiveState } from '../managers/ServiceWorkerManager';
 import Context from '../models/Context';
 import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
+import * as log from 'loglevel';
+
 
 export enum WorkerMessengerCommand {
   WorkerVersion = "GetWorkerVersion",
@@ -25,7 +27,7 @@ export class WorkerMessengerReplyBuffer {
   private replies: object;
 
   constructor() {
-    this.replies = { };
+    this.replies = {};
   }
 
   public addListener(command: WorkerMessengerCommand, callback: Function, onceListenerOnly: boolean) {
@@ -64,10 +66,18 @@ export class WorkerMessenger {
 
   private context: Context;
   private replies: WorkerMessengerReplyBuffer;
+  private debug: boolean;
 
   constructor(context: Context) {
     this.context = context;
     this.replies = new WorkerMessengerReplyBuffer();
+    this.debug = true;
+  }
+
+  public log(..._) {
+    if (this.debug) {
+      log.debug.apply(this, arguments);
+    }
   }
 
   /**
@@ -81,6 +91,7 @@ export class WorkerMessenger {
     } else {
       const clients = await self.clients.matchAll({});
       for (let client of clients) {
+        this.log(`[Worker Messenger] [SW -> Page] Broadcasting '${command.toString()}' to window client ${client.url}.`)
         client.postMessage({
           command: command,
           payload: payload
@@ -96,6 +107,7 @@ export class WorkerMessenger {
       if (!windowClient) {
         throw new InvalidArgumentError('windowClient', InvalidArgumentReason.Empty);
       } else {
+        this.log(`[Worker Messenger] [SW -> Page] Unicasting '${command.toString()}' to window client ${windowClient.url}.`)
         windowClient.postMessage({
           command: command,
           payload: payload
@@ -105,6 +117,7 @@ export class WorkerMessenger {
       if (!(await this.isWorkerControllingPage())) {
         throw new InvalidStateError(InvalidStateReason.ServiceWorkerNotActivated);
       }
+      this.log(`[Worker Messenger] [Page -> SW] Unicasting '${command.toString()}' to service worker.`)
       navigator.serviceWorker.controller.postMessage({
         command: command,
         payload: payload
@@ -116,20 +129,49 @@ export class WorkerMessenger {
     const env = SdkEnvironment.getWindowEnv();
 
     if (env === WindowEnvironmentKind.ServiceWorker) {
-
+      self.addEventListener('message', this.onWorkerMessageReceivedFromPage.bind(this));
+      this.log('[Worker Messenger] Service worker is now listening for messages.');
     } else {
       if (!(await this.isWorkerControllingPage())) {
         throw new InvalidStateError(InvalidStateReason.ServiceWorkerNotActivated);
       }
-      navigator.serviceWorker.onmessage = this.onMessageReceivedFromServiceWorker;
+      navigator.serviceWorker.addEventListener('message', this.onPageMessageReceivedFromServiceWorker.bind(this));
+      this.log('[Worker Messenger] Page is now listening for messages.');
     }
   }
 
-  async onMessageReceivedFromServiceWorker(event: ServiceWorkerMessageEvent) {
+  async onWorkerMessageReceivedFromPage(event: ServiceWorkerMessageEvent) {
     const data: WorkerMessengerMessage = event.data;
     const listenerRecords = this.replies.findListenersForMessage(data.command);
     const listenersToRemove = [];
     const listenersToCall = [];
+
+    this.log(`[Worker Messenger] Service worker received message:`, event.data);
+
+    for (let listenerRecord of listenerRecords) {
+      if (listenerRecord.onceListenerOnly) {
+        listenersToRemove.push(listenerRecord);
+      } else {
+        listenersToCall.push(listenerRecord);
+      }
+    }
+    for (let i = listenersToRemove.length - 1; i > 0; i--) {
+      const listenerRecord = listenersToRemove[i];
+      this.replies.deleteListenerRecord(data.command, listenerRecord);
+    }
+    for (let listenerRecord of listenersToCall) {
+      listenerRecord.callback.apply(null, data.payload);
+    }
+  }
+
+  async onPageMessageReceivedFromServiceWorker(event: ServiceWorkerMessageEvent) {
+    const data: WorkerMessengerMessage = event.data;
+    const listenerRecords = this.replies.findListenersForMessage(data.command);
+    const listenersToRemove = [];
+    const listenersToCall = [];
+
+    this.log(`[Worker Messenger] Page received message:`, event.data);
+
     for (let listenerRecord of listenerRecords) {
       if (listenerRecord.onceListenerOnly) {
         listenersToRemove.push(listenerRecord);
@@ -161,7 +203,7 @@ export class WorkerMessenger {
   private async isWorkerControllingPage(): Promise<boolean> {
     const env = SdkEnvironment.getWindowEnv();
 
-    if (env !== WindowEnvironmentKind.ServiceWorker) {
+    if (env === WindowEnvironmentKind.ServiceWorker) {
       return self.registration.active !== undefined &&
         self.registration.active.state === "activated";
     } else {

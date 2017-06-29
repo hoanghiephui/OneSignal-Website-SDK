@@ -131,10 +131,15 @@ export class ServiceWorker {
   }
 
   static async setupMessageListeners() {
+    log.debug('Setting up message listeners.');
+    ServiceWorker.workerMessenger.listen();
     ServiceWorker.workerMessenger.on(WorkerMessengerCommand.WorkerVersion, _ => {
+      log.debug('Received worker version message.');
+      log.debug('Broadcasting reply to all service worker clients.');
       ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.WorkerVersion, Environment.version());
     });
     ServiceWorker.workerMessenger.on(WorkerMessengerCommand.Subscribe, async data => {
+      log.debug('Received subscribe message.');
       const appConfig = await OneSignalApi.getAppConfig(data.appId);
       const subscriptionManager = new SubscriptionManager(OneSignal.context, {
         safariWebId: appConfig.safariWebId,

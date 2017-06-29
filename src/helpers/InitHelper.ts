@@ -327,8 +327,6 @@ export default class InitHelper {
         subdomainName: serverConfig.subdomain
       }, {
         safari_web_id: serverConfig.safariWebId
-      }, {
-        cookieSyncEnabled: serverConfig.cookieSyncEnabled
       },
       userConfig);
 

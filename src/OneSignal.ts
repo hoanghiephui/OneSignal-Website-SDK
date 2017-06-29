@@ -165,8 +165,6 @@ export default class OneSignal {
       OneSignal.config = InitHelper.getMergedLegacyConfig(options, appConfig);
       log.debug(`OneSignal: Final web app config: %c${JSON.stringify(OneSignal.config, null, 4)}`, getConsoleStyle('code'));
 
-      OneSignal.context.workerMessenger = new WorkerMessenger(OneSignal.context);
-
       OneSignal.context.subscriptionManager = new SubscriptionManager(OneSignal.context, {
         safariWebId: appConfig.safariWebId,
         appId: new Uuid(options.appId),
@@ -178,6 +176,9 @@ export default class OneSignal {
         workerBPath: new Path((options.path || '/') + SdkEnvironment.getBuildEnvPrefix() + OneSignal.SERVICE_WORKER_UPDATER_PATH),
         registrationOptions: OneSignal.SERVICE_WORKER_PARAM || { scope: '/'  }
       });
+
+      OneSignal.context.workerMessenger = new WorkerMessenger(OneSignal.context);
+      OneSignal.context.workerMessenger.listen();
     } catch (e) {
       if (e) {
         if (e.code === 1) {

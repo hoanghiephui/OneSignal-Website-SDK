@@ -49,17 +49,6 @@ export class SubscriptionManager {
   }
 
   async subscribe(): Promise<Uuid> {
-    /*
-       Check our notification permission before subscribing.
-
-       - If notifications are blocked, we can't subscribe.
-       - If notifications are granted, the user should be completely resubscribed.
-       - If notifications permissions are untouched, the user will be prompted and then subscribed.
-     */
-    const notificationPermissionBeforeSubscribing: NotificationPermission = await OneSignal.getNotificationPermission();
-    if (notificationPermissionBeforeSubscribing === NotificationPermission.Denied) {
-      throw new PushPermissionNotGrantedError(PushPermissionNotGrantedErrorReason.Blocked);
-    }
 
     let pushSubscription: RawPushSubscription;
     let pushRegistration = new PushRegistration();
@@ -67,6 +56,18 @@ export class SubscriptionManager {
     if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.ServiceWorker) {
       pushSubscription = await this.subscribeFcmFromWorker();
     } else {
+      /*
+        Check our notification permission before subscribing.
+
+        - If notifications are blocked, we can't subscribe.
+        - If notifications are granted, the user should be completely resubscribed.
+        - If notifications permissions are untouched, the user will be prompted and then subscribed.
+      */
+      const notificationPermissionBeforeSubscribing: NotificationPermission = await OneSignal.getNotificationPermission();
+      if (notificationPermissionBeforeSubscribing === NotificationPermission.Denied) {
+        throw new PushPermissionNotGrantedError(PushPermissionNotGrantedErrorReason.Blocked);
+      }
+
       if (this.isSafari()) {
         pushSubscription = await this.subscribeSafari();
         EventHelper.triggerNotificationPermissionChanged();

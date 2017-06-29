@@ -4,7 +4,6 @@ import SdkEnvironment from '../managers/SdkEnvironment';
 import { AppConfig } from '../models/AppConfig';
 import { AppState } from '../models/AppState';
 import { Notification } from '../models/Notification';
-import { ServiceWorkerConfig } from '../models/ServiceWorkerConfig';
 import { ServiceWorkerState } from '../models/ServiceWorkerState';
 import { Subscription } from '../models/Subscription';
 import { TestEnvironmentKind } from '../models/TestEnvironmentKind';
@@ -148,8 +147,6 @@ export default class Database {
     const config = new AppConfig();
     config.appId = new Uuid(await this.get<string>('Ids', 'appId'));
     config.subdomain = await this.get<string>('Options', 'subdomain');
-    config.autoRegister = await this.get<boolean>('Options', 'autoRegister');
-    config.serviceWorkerConfig = await this.get<ServiceWorkerConfig>('Options', 'serviceWorkerConfig');
     config.vapidPublicKey = await Database.get<string>('Options', 'vapidPublicKey');
     return config;
   }
@@ -159,10 +156,6 @@ export default class Database {
       await this.put('Ids', {type: 'appId', id: appConfig.appId})
     if (appConfig.subdomain)
       await this.put('Options', {key: 'subdomain', value: appConfig.subdomain})
-    if (appConfig.autoRegister)
-      await this.put('Options', {key: 'autoRegister', value: appConfig.autoRegister})
-    if (appConfig.serviceWorkerConfig)
-      await this.put('Options', {key: 'serviceWorkerConfig', value: appConfig.serviceWorkerConfig})
     if (appConfig.httpUseOneSignalCom)
       await this.put('Options', { key: 'httpUseOneSignalCom', value: true })
     else
@@ -205,26 +198,6 @@ export default class Database {
         }
       }
     }
-  }
-
-  async getServiceWorkerConfig(): Promise<ServiceWorkerConfig> {
-    const config = new ServiceWorkerConfig();
-    config.scope = await this.get<string>('Options', 'workerScope');
-    config.workerName = await this.get<string>('Options', 'workerName');
-    config.updaterWorkerName = await this.get<string>('Options', 'updaterWorkerName');
-    config.workerFilePath = await this.get<string>('Options', 'workerFilePath');
-    return config;
-  }
-
-  async setServiceWorkerConfig(config: ServiceWorkerConfig) {
-    if (config.scope)
-      await this.put('Options', {key: 'workerScope', value: config.scope});
-    if (config.workerName)
-      await this.put('Options', {key: 'workerName', value: config.workerName});
-    if (config.updaterWorkerName)
-      await this.put('Options', {key: 'updaterWorkerName', value: config.updaterWorkerName});
-    if (config.workerFilePath)
-      await this.put('Options', {key: 'workerFilePath', value: config.workerFilePath});
   }
 
   async getServiceWorkerState(): Promise<ServiceWorkerState> {
@@ -322,14 +295,6 @@ export default class Database {
   static async getServiceWorkerState(...args: any[]): Promise<ServiceWorkerState> {
     Database.ensureSingletonInstance();
     return Database.databaseInstance.getServiceWorkerState.apply(Database.databaseInstance, args);
-  }
-  static async setServiceWorkerConfig(...args: any[]) {
-    Database.ensureSingletonInstance();
-    return Database.databaseInstance.setServiceWorkerConfig.apply(Database.databaseInstance, args);
-  }
-  static async getServiceWorkerConfig(...args: any[]): Promise<ServiceWorkerConfig> {
-    Database.ensureSingletonInstance();
-    return Database.databaseInstance.getServiceWorkerConfig.apply(Database.databaseInstance, args);
   }
   static async setAppState(...args: any[]) {
     Database.ensureSingletonInstance();

@@ -31,8 +31,19 @@ export enum ServiceWorkerActiveState {
 }
 
 export interface ServiceWorkerManagerConfig {
+  /**
+   * The path and filename of the "main" worker (e.g. '/OneSignalSDKWorker.js');
+   */
   workerAPath: Path,
+  /**
+   * The path and filename to the "alternate" worker, used to update an existing
+   * service worker. (e.g. '/OneSignalSDKUpdaterWorer.js')
+   */
   workerBPath: Path,
+  /**
+   * Describes how much of the origin the service worker controls.
+   * This is currently always "/".
+   */
   registrationOptions: { scope: string }
 }
 
@@ -117,7 +128,7 @@ export class ServiceWorkerManager {
     // TODO: Finish
     const workerState = await this.getActiveState();
 
-    if (workerState !== ServiceWorkerActiveState.WorkerA ||
+    if (workerState !== ServiceWorkerActiveState.WorkerA &&
       workerState !== ServiceWorkerActiveState.WorkerB) {
       throw new InvalidStateError(InvalidStateReason.ServiceWorkerNotActivated);
     }

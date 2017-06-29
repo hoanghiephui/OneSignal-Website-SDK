@@ -39,24 +39,12 @@ test("should assign downloaded safari web ID if not provided", async t => {
   t.is(result.safari_web_id, t.context.serverConfig.safariWebId);
 });
 
-test("should assign cookie sync enabled if provided", async t => {
-  t.context.serverConfig.cookieSyncEnabled = true;
-  const result = InitHelper.getMergedLegacyConfig({}, t.context.serverConfig);
-  t.is(result.cookieSyncEnabled, t.context.serverConfig.cookieSyncEnabled);
-});
-
 test("should not overwrite provided safari web ID", async t => {
   t.context.serverConfig.safariWebId = 'web.onesignal.auto.01ea4289-b460-45e4-8d90-838752554827';
   const result = InitHelper.getMergedLegacyConfig({
     safari_web_id: 'web.onesignal.auto.01ea4289-b460-45e4-8d90-838752551111'
   }, t.context.serverConfig);
   t.is(result.safari_web_id, 'web.onesignal.auto.01ea4289-b460-45e4-8d90-838752551111');
-});
-
-test("should assign vapid public key if provided", async t => {
-  t.context.serverConfig.vapid_public_key = 'CGaJGShYR5EtYau2e50MdROXAUJ7mTtcaVWQGN9NPBT4F8XiUOghtQYE3y_OwJ1886jT1TBCHBhL8TSRPGM25sX';
-  const result = InitHelper.getMergedLegacyConfig({}, t.context.serverConfig);
-  t.is(result.vapidPublicKey, t.context.serverConfig.vapid_public_key);
 });
 
 
