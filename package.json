@@ -73,6 +73,7 @@
     "@types/node": "latest",
     "@types/object-assign": "^4.0.30",
     "@types/requirejs": "latest",
+    "@types/sinon": "^2.3.2",
     "@types/validator": "latest",
     "@types/whatwg-fetch": "latest",
     "ava": "^0.18.2",

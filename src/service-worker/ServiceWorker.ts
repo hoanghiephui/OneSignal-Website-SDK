@@ -4,12 +4,15 @@ import * as objectAssign from 'object-assign';
 import * as swivel from 'swivel';
 
 import Environment from '../Environment';
+import { WorkerMessenger, WorkerMessengerCommand } from '../libraries/WorkerMessenger';
 import SdkEnvironment from '../managers/SdkEnvironment';
 import { SubscriptionManager } from '../managers/SubscriptionManager';
 import { BuildEnvironmentKind } from '../models/BuildEnvironmentKind';
+import Context from '../models/Context';
 import OneSignalApi from '../OneSignalApi';
 import Database from '../services/Database';
-import { capitalize, contains, getConsoleStyle, getDeviceTypeForBrowser, isValidUuid, trimUndefined } from '../utils';
+import { contains, getConsoleStyle, getDeviceTypeForBrowser, isValidUuid, trimUndefined } from '../utils';
+import { Uuid } from '../models/Uuid';
 
 ///<reference path="../../typings/globals/service_worker_api/index.d.ts"/>
 declare var self: ServiceWorkerGlobalScope;
@@ -76,6 +79,20 @@ export class ServiceWorker {
     return Browser;
   }
 
+  static get workerMessenger(): WorkerMessenger {
+    if (!(self as any).workerMessenger) {
+      (self as any).workerMessenger = new WorkerMessenger(null);
+    }
+    return (self as any).workerMessenger;
+  }
+
+  static get context(): Context {
+    if (!(self as any).context) {
+      (self as any).context = new Context();
+    }
+    return (self as any).context;
+  }
+
   /**
    * Service worker entry point.
    */
@@ -88,7 +105,8 @@ export class ServiceWorker {
     self.addEventListener('pushsubscriptionchange', ServiceWorker.onPushSubscriptionChange);
 
     // Install messaging event handlers for page <-> service worker communication
-    (swivel as any).on('data', ServiceWorker.onMessageReceived);
+    ServiceWorker.setupMessageListeners();
+
 
     // 3/2/16: Firefox does not send the Origin header when making CORS request through service workers, which breaks some sites that depend on the Origin header being present (https://bugzilla.mozilla.org/show_bug.cgi?id=1248463)
     // Fix: If the browser is Firefox and is v44, use the following workaround:
@@ -112,43 +130,20 @@ export class ServiceWorker {
     }
   }
 
-  /**
-   * Occurs when a control message is received from the host page. Not related to the actual push message event.
-   * @param context Used to reply to the host page.
-   * @param data The message contents.
-   */
-  static async onMessageReceived(context, data) {
-    log.debug(`%c${capitalize(SdkEnvironment.getWindowEnv().toString())} ⬸ Host:`, getConsoleStyle('serviceworkermessage'), data, context);
-
-    if (!data) {
-      log.debug('Returning from empty data message.');
-      return;
-    }
-
-    if (data === "serviceworker.version") {
-      swivel.broadcast('serviceworker.version', ServiceWorker.VERSION);
-    }
-    if (data === "serviceworker.subscribe") {
-      const appConfig = await OneSignalApi.getAppConfig(options.appId);
+  static async setupMessageListeners() {
+    ServiceWorker.workerMessenger.on(WorkerMessengerCommand.WorkerVersion, _ => {
+      ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.WorkerVersion, Environment.version());
+    });
+    ServiceWorker.workerMessenger.on(WorkerMessengerCommand.Subscribe, async data => {
+      const appConfig = await OneSignalApi.getAppConfig(data.appId);
       const subscriptionManager = new SubscriptionManager(OneSignal.context, {
         safariWebId: appConfig.safariWebId,
-        appId: appConfig.appId,
+        appId: new Uuid(data.appId),
         vapidPublicKey: appConfig.vapidPublicKey
       });
-      // TODO:      subscriptionManager.
-      swivel.broadcast('serviceworker.version', ServiceWorker.VERSION);
-    }
-    else if (data === 'notification.closeall') {
-      // Used for testing; the host page can close active notifications
-      self.registration.getNotifications(null).then(notifications => {
-        for (let notification of notifications) {
-          notification.close();
-        }
-      });
-    }
-    else if (data.query) {
-      ServiceWorker.processQuery(data.query, data.response);
-    }
+      const deviceId = await subscriptionManager.subscribe();
+      ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.Subscribe, deviceId);
+    });
   }
 
   static processQuery(queryType, response) {
@@ -806,7 +801,7 @@ export class ServiceWorker {
                                         .then(() => Database.get('Ids', 'userId'))
                                         .then(userId => {
                                           if (self.registration && userId) {
-                                            return ServiceWorker._subscribeForPush(self.registration).catch(e => log.error(e));
+                                            //return ServiceWorker._subscribeForPush(self.registration).catch(e => log.error(e));
                                           }
                                         });
     event.waitUntil(activationPromise);
@@ -819,7 +814,7 @@ export class ServiceWorker {
   static onPushSubscriptionChange(event) {
     // Subscription expired
     log.debug(`Called %conPushSubscriptionChange(${JSON.stringify(event, null, 4)}):`, getConsoleStyle('code'), event);
-    event.waitUntil(ServiceWorker._subscribeForPush(self.registration));
+    //event.waitUntil(ServiceWorker._subscribeForPush(self.registration));
   }
 
   /**

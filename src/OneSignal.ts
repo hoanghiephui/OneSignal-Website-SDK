@@ -61,6 +61,7 @@ import {
   prepareEmailForHashing,
 } from './utils';
 import { ValidatorUtils } from './utils/ValidatorUtils';
+import { WorkerMessenger } from './libraries/WorkerMessenger';
 
 
 export default class OneSignal {
@@ -164,16 +165,18 @@ export default class OneSignal {
       OneSignal.config = InitHelper.getMergedLegacyConfig(options, appConfig);
       log.debug(`OneSignal: Final web app config: %c${JSON.stringify(OneSignal.config, null, 4)}`, getConsoleStyle('code'));
 
+      OneSignal.context.workerMessenger = new WorkerMessenger(OneSignal.context);
+
       OneSignal.context.subscriptionManager = new SubscriptionManager(OneSignal.context, {
         safariWebId: appConfig.safariWebId,
-        appId: appConfig.appId,
+        appId: new Uuid(options.appId),
         vapidPublicKey: appConfig.vapidPublicKey
       });
 
-      OneSignal.context.serviceWorkerManager = new ServiceWorkerManager({
-        workerAPath: new Path((options.path || '/') + OneSignal.SERVICE_WORKER_PATH),
-        workerBPath: new Path((options.path || '/') + OneSignal.SERVICE_WORKER_UPDATER_PATH),
-        registrationScope: OneSignal.SERVICE_WORKER_PARAM || { scope: '/'  }
+      OneSignal.context.serviceWorkerManager = new ServiceWorkerManager(OneSignal.context, {
+        workerAPath: new Path((options.path || '/') + SdkEnvironment.getBuildEnvPrefix() + OneSignal.SERVICE_WORKER_PATH),
+        workerBPath: new Path((options.path || '/') + SdkEnvironment.getBuildEnvPrefix() + OneSignal.SERVICE_WORKER_UPDATER_PATH),
+        registrationOptions: OneSignal.SERVICE_WORKER_PARAM || { scope: '/'  }
       });
     } catch (e) {
       if (e) {

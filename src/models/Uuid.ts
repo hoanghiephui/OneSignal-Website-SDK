@@ -10,7 +10,9 @@ export class Uuid implements Serializable {
   }
 
   constructor(uuid: string = Uuid.generate()) {
-    if (isUuid(uuid)) {
+    if (uuid === null) {
+      this.uuid = null;
+    } else if (isUuid(uuid)) {
       this.uuid = uuid;
     } else {
       throw new InvalidUuidError(uuid);

@@ -3,7 +3,7 @@ import { InvalidArgumentError, InvalidArgumentReason } from '../errors/InvalidAr
 /**
  * Represents a normalized path.
  *
- * Paths are downcased.
+ * Paths are downcased and spaces are trimmed.
  * Paths without file names will never contain trailing slashes, except for empty paths.
  */
 export default class Path {
@@ -14,7 +14,7 @@ export default class Path {
     if (!path) {
       throw new InvalidArgumentError('path', InvalidArgumentReason.Empty);
     }
-    this.path = path.toLowerCase();
+    this.path = path.toLowerCase().trim();
   }
 
   getFileName(): string {

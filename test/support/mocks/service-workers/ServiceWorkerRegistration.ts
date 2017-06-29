@@ -1,4 +1,5 @@
 import NotImplementedError from "../../../../src/errors/NotImplementedError";
+import ServiceWorker from './ServiceWorker';
 
 export class ServiceWorkerRegistration implements EventTarget {
   installing: ServiceWorker;

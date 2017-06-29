@@ -1,6 +1,10 @@
+import * as log from 'loglevel';
+
 import Environment from '../Environment';
+import { InvalidStateError, InvalidStateReason } from '../errors/InvalidStateError';
+import { WorkerMessengerCommand } from '../libraries/WorkerMessenger';
+import Context from '../models/Context';
 import Path from '../models/Path';
-import { contains } from '../utils';
 import SdkEnvironment from './SdkEnvironment';
 
 
@@ -29,15 +33,19 @@ export enum ServiceWorkerActiveState {
 export interface ServiceWorkerManagerConfig {
   workerAPath: Path,
   workerBPath: Path,
-  registrationScope: { scope: string }
+  registrationOptions: { scope: string }
 }
 
 export class ServiceWorkerManager {
 
   static UPDATED_FLAG = 'onesignal-update-serviceworker-completed';
 
-  constructor(private config: ServiceWorkerManagerConfig) {
+  private context: Context;
+  private config: ServiceWorkerManagerConfig;
 
+  constructor(context: Context, config: ServiceWorkerManagerConfig) {
+    this.context = context;
+    this.config = config;
   }
 
   async getActiveState(): Promise<ServiceWorkerActiveState> {
@@ -94,10 +102,10 @@ export class ServiceWorkerManager {
 
         Check the filename to see if it belongs to our A / B worker.
       */
-    else if (contains(workerRegistration.active.scriptURL, this.config.workerAPath.getFileName())) {
+    else if (new Path(workerRegistration.active.scriptURL).getFileName() == this.config.workerAPath.getFileName()) {
       return ServiceWorkerActiveState.WorkerA;
     }
-    else if (contains(workerRegistration.active.scriptURL, this.config.workerBPath.getFileName())) {
+    else if (new Path(workerRegistration.active.scriptURL).getFileName() == this.config.workerBPath.getFileName()) {
       return ServiceWorkerActiveState.WorkerB;
     }
     else {
@@ -105,14 +113,17 @@ export class ServiceWorkerManager {
     }
   }
 
-  async getWorkerVersion() {
+  async getWorkerVersion(): Promise<number> {
     // TODO: Finish
-    const workerRegistration = await navigator.serviceWorker.getRegistration();
-    return new Promise(resolve => {
-      OneSignal._channel.on('serviceworker.version', (_, data) => {
-        resolve(data);
-      });
-      OneSignal._channel.emit('data', 'serviceworker.version');
+    const workerState = await this.getActiveState();
+
+    if (workerState !== ServiceWorkerActiveState.WorkerA ||
+      workerState !== ServiceWorkerActiveState.WorkerB) {
+      throw new InvalidStateError(InvalidStateReason.ServiceWorkerNotActivated);
+    }
+    return new Promise<number>(resolve => {
+      this.context.workerMessenger.once(WorkerMessengerCommand.WorkerVersion, resolve);
+      this.context.workerMessenger.unicast(WorkerMessengerCommand.WorkerVersion);
     });
   }
 
@@ -140,7 +151,7 @@ export class ServiceWorkerManager {
       log.info(`[Service Worker Update] Updating service worker from v${workerVersion} --> v${Environment.version()}.`);
       log.debug(`[Service Worker Update] Registering new service worker`, fullWorkerPath);
 
-      await navigator.serviceWorker.register(fullWorkerPath, this.config.registrationScope);
+      await navigator.serviceWorker.register(fullWorkerPath, this.config.registrationOptions);
       log.debug(`[Service Worker Update] Service worker registration complete.`);
     } else {
       log.info(`[Service Worker Update] Service worker version is current at v${workerVersion} (no update required).`);
@@ -156,7 +167,6 @@ export class ServiceWorkerManager {
    */
   async installWorker() {
     const workerState = await this.getActiveState();
-    const workerVersion = await this.getWorkerVersion();
 
     if (workerState === ServiceWorkerActiveState.ThirdParty) {
       /*
@@ -182,9 +192,9 @@ export class ServiceWorkerManager {
       workerFileName = this.config.workerBPath.getFileName();
     }
 
-    fullWorkerPath = `${workerDirectory}/${SdkEnvironment.getBuildEnvPrefix()}${workerFileName}`;
+    fullWorkerPath = `${workerDirectory}/${workerFileName}`;
     log.info(`[Service Worker Installation] Installing service worker ${fullWorkerPath}.`);
-    await navigator.serviceWorker.register(fullWorkerPath, this.config.registrationScope);
+    await navigator.serviceWorker.register(fullWorkerPath, this.config.registrationOptions);
     log.debug(`[Service Worker Installation] Service worker installed.`);
   }
 }

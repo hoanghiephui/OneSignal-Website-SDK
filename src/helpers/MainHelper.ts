@@ -173,7 +173,7 @@ export default class MainHelper {
    *          If a user already exists and is subscribed, updates the session count by calling /players/:id/on_session; otherwise, a new player is registered via the /players endpoint.
    *          Saves the user ID and registration ID to the local web database after the response from OneSignal.
    */
-  static registerWithOneSignal(appId, subscriptionInfo) {
+  static registerWithOneSignal(appId: Uuid, subscriptionInfo) {
     let deviceType = getDeviceTypeForBrowser();
     return Promise.all([
       OneSignal.getUserId(),
@@ -185,7 +185,7 @@ export default class MainHelper {
                       `players`;
 
                     let requestData = {
-                      app_id: appId,
+                      app_id: appId.value,
                       device_type: deviceType,
                       language: Environment.getLanguage(),
                       timezone: new Date().getTimezoneOffset() * -60,
@@ -305,7 +305,7 @@ export default class MainHelper {
     if (!appId) {
       throw new InvalidStateError(InvalidStateReason.MissingAppId);
     }
-    var url = `${SdkEnvironment.getOneSignalApiUrl().toString()}/apps/${appId}/icon`;
+    var url = `${SdkEnvironment.getOneSignalApiUrl().toString()}/apps/${appId.value}/icon`;
     const response = await fetch(url);
     const data = await response.json();
     if (data.errors) {

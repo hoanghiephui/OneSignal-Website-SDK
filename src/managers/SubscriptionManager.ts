@@ -1,9 +1,10 @@
 import * as Browser from 'bowser';
+import * as log from 'loglevel';
 
 import Environment from '../Environment';
 import { InvalidStateError, InvalidStateReason } from '../errors/InvalidStateError';
-import { PushPermissionNotGrantedErrorReason } from '../errors/PushPermissionNotGrantedError';
 import PushPermissionNotGrantedError from '../errors/PushPermissionNotGrantedError';
+import { PushPermissionNotGrantedErrorReason } from '../errors/PushPermissionNotGrantedError';
 import { SdkInitError, SdkInitErrorKind } from '../errors/SdkInitError';
 import SubscriptionError from '../errors/SubscriptionError';
 import { SubscriptionErrorReason } from '../errors/SubscriptionError';
@@ -22,6 +23,7 @@ import OneSignal from '../OneSignal';
 import OneSignalApi from '../OneSignalApi';
 import Database from '../services/Database';
 import SdkEnvironment from './SdkEnvironment';
+
 
 
 export interface SubscriptionManagerConfig {
@@ -47,56 +49,57 @@ export class SubscriptionManager {
   }
 
   async subscribe(): Promise<Uuid> {
-      /*
-         Check our notification permission before subscribing.
+    /*
+       Check our notification permission before subscribing.
 
-         - If notifications are blocked, we can't subscribe.
-         - If notifications are granted, the user should be completely resubscribed.
-         - If notifications permissions are untouched, the user will be prompted and then subscribed.
-       */
-      const notificationPermissionBeforeSubscribing: NotificationPermission = await OneSignal.getNotificationPermission();
-      if (notificationPermissionBeforeSubscribing === NotificationPermission.Denied) {
-          throw new PushPermissionNotGrantedError(PushPermissionNotGrantedErrorReason.Blocked);
-      }
+       - If notifications are blocked, we can't subscribe.
+       - If notifications are granted, the user should be completely resubscribed.
+       - If notifications permissions are untouched, the user will be prompted and then subscribed.
+     */
+    const notificationPermissionBeforeSubscribing: NotificationPermission = await OneSignal.getNotificationPermission();
+    if (notificationPermissionBeforeSubscribing === NotificationPermission.Denied) {
+      throw new PushPermissionNotGrantedError(PushPermissionNotGrantedErrorReason.Blocked);
+    }
 
-      let pushSubscription: RawPushSubscription;
-      let pushRegistration = new PushRegistration();
-      pushRegistration.appId = this.config.appId;
+    let pushSubscription: RawPushSubscription;
+    let pushRegistration = new PushRegistration();
 
-      if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.ServiceWorker) {
-          pushSubscription = await this.subscribeFcmFromWorker();
-      } else {
-          if (this.isSafari()) {
-              pushSubscription = await this.subscribeSafari();
-              EventHelper.triggerNotificationPermissionChanged();
-          } else {
-              pushSubscription = await this.subscribeFcm();
-          }
-      }
-
+    if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.ServiceWorker) {
+      pushSubscription = await this.subscribeFcmFromWorker();
+    } else {
       if (this.isSafari()) {
-          pushRegistration.deliveryPlatform = DeliveryPlatformKind.Safari;
-      } else if (Browser.firefox) {
-          pushRegistration.deliveryPlatform = DeliveryPlatformKind.Firefox;
+        pushSubscription = await this.subscribeSafari();
+        EventHelper.triggerNotificationPermissionChanged();
       } else {
-          pushRegistration.deliveryPlatform = DeliveryPlatformKind.ChromeLike;
+        pushSubscription = await this.subscribeFcm();
       }
+    }
+    pushRegistration.appId = this.config.appId;
 
-      pushRegistration.subscriptionState = SubscriptionStateKind.Subscribed;
+    if (this.isSafari()) {
+      pushRegistration.deliveryPlatform = DeliveryPlatformKind.Safari;
+    } else if (Browser.firefox) {
+      pushRegistration.deliveryPlatform = DeliveryPlatformKind.Firefox;
+    } else {
+      pushRegistration.deliveryPlatform = DeliveryPlatformKind.ChromeLike;
+    }
 
-      if (this.isAlreadyRegisteredWithOneSignal()) {
-          const { deviceId } = await Database.getSubscription();
-          const { id: newUserId } = await OneSignalApi.updateUserSession(deviceId, pushRegistration)
-          return new Uuid(newUserId);
-      } else {
-          const { id: newUserId } = await OneSignalApi.createUser(pushRegistration)
-          return new Uuid(newUserId);
-      }
+    pushRegistration.subscriptionState = SubscriptionStateKind.Subscribed;
+    pushRegistration.subscription = pushSubscription;
+
+    if (await this.isAlreadyRegisteredWithOneSignal()) {
+      const { deviceId } = await Database.getSubscription();
+      const { id: newUserId } = await OneSignalApi.updateUserSession(deviceId, pushRegistration);
+      return new Uuid(newUserId);
+    } else {
+      const { id: newUserId } = await OneSignalApi.createUser(pushRegistration);
+      return new Uuid(newUserId);
+    }
   }
 
   async isAlreadyRegisteredWithOneSignal() {
       const { deviceId } = await Database.getSubscription();
-      return !!deviceId;
+      return !!deviceId.value;
   }
 
   subscribeSafariPromptPermission(): Promise<string | null> {
@@ -248,7 +251,7 @@ export class SubscriptionManager {
     } else {
         // No existing push subscription; just subscribe the user
         if (Environment.supportsVapid() && this.config.vapidPublicKey) {
-            options.applicationServerKey = this.config.vapidPublicKey;
+            options.applicationServerKey = this.urlBase64ToUint8Array(this.config.vapidPublicKey);
             newPushSubscription = await workerRegistration.pushManager.subscribe(options);
         } else {
             // VAPID isn't supported; so subscribe via legacy manifest.json GCM Sender ID
@@ -289,5 +292,20 @@ export class SubscriptionManager {
     }
 
     return pushSubscriptionDetails;
+  }
+
+  urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+      .replace(/\-/g, '+')
+      .replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
   }
 }

@@ -1,8 +1,12 @@
 import { Uuid } from './Uuid';
-import { Serializable } from './Serializable';
+import Environment from '../Environment';
+import NotImplementedError from '../errors/NotImplementedError';
 import { DeliveryPlatformKind } from './DeliveryPlatformKind';
-import { SubscriptionStateKind } from './SubscriptionStateKind';
 import { DevicePlatformKind } from './DevicePlatformKind';
+import { RawPushSubscription } from './RawPushSubscription';
+import { Serializable } from './Serializable';
+import { SubscriptionStateKind } from './SubscriptionStateKind';
+import { Uuid } from './Uuid';
 import Environment from '../Environment';
 import NotImplementedError from '../errors/NotImplementedError';
 import * as Browser from 'bowser';
@@ -24,6 +28,7 @@ export class PushRegistration implements Serializable {
   public deviceModel: string;
   public sdkVersion: string;
   public subscriptionState: SubscriptionStateKind;
+  public subscription: RawPushSubscription;
 
   constructor() {
     this.language = Environment.getLanguage();
@@ -35,7 +40,7 @@ export class PushRegistration implements Serializable {
     this.devicePlatform = this.getDevicePlatformKind();
     this.deviceModel = navigator.platform;
     this.sdkVersion = Environment.version().toString();
-    // Unimplemented properties are appId, deliveryPlatform, and subscriptionState
+    // Unimplemented properties are appId, deliveryPlatform, subscriptionState, and subscription
   }
 
   getDevicePlatformKind(): DevicePlatformKind {
@@ -123,7 +128,10 @@ export class PushRegistration implements Serializable {
       operating_system: this.operatingSystem,
       operating_system_version: this.operatingSystemVersion,
       device_platform: this.devicePlatform,
-      device_model: this.deviceModel
+      device_model: this.deviceModel,
+      identifier: Browser.safari ? this.subscription.safariDeviceToken : this.subscription.fcmEndpoint,
+      web_auth: this.subscription.fcmAuth,
+      web_p256: this.subscription.fcmP256dh
     };
   }
 

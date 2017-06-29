@@ -122,6 +122,10 @@
     "@types/express-serve-static-core" "*"
     "@types/mime" "*"
 
+"@types/sinon@^2.3.2":
+  version "2.3.2"
+  resolved "https://registry.yarnpkg.com/@types/sinon/-/sinon-2.3.2.tgz#1e1e99e67162d78e2db17816892bf93bf5209885"
+
 "@types/validator@latest":
   version "6.2.0"
   resolved "https://registry.yarnpkg.com/@types/validator/-/validator-6.2.0.tgz#020322fe1929f69889eb675a1bdb5a98394b71f0"
