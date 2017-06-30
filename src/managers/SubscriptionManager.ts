@@ -23,6 +23,7 @@ import OneSignal from '../OneSignal';
 import OneSignalApi from '../OneSignalApi';
 import Database from '../services/Database';
 import SdkEnvironment from './SdkEnvironment';
+import { Subscription } from '../models/Subscription';
 
 
 
@@ -48,7 +49,7 @@ export class SubscriptionManager {
       window.safari.pushNotification !== undefined;
   }
 
-  async subscribe(): Promise<Uuid> {
+  async subscribe(): Promise<Subscription> {
 
     let pushSubscription: RawPushSubscription;
     let pushRegistration = new PushRegistration();
@@ -75,7 +76,6 @@ export class SubscriptionManager {
         pushSubscription = await this.subscribeFcm();
       }
     }
-    debugger;
     pushRegistration.appId = this.config.appId;
 
     if (this.isSafari()) {
@@ -89,14 +89,21 @@ export class SubscriptionManager {
     pushRegistration.subscriptionState = SubscriptionStateKind.Subscribed;
     pushRegistration.subscription = pushSubscription;
 
+    let newDeviceId;
     if (await this.isAlreadyRegisteredWithOneSignal()) {
       const { deviceId } = await Database.getSubscription();
-      const { id: newUserId } = await OneSignalApi.updateUserSession(deviceId, pushRegistration);
-      return new Uuid(newUserId);
+      const { id } = await OneSignalApi.updateUserSession(deviceId, pushRegistration);
+      newDeviceId = id;
     } else {
-      const { id: newUserId } = await OneSignalApi.createUser(pushRegistration);
-      return new Uuid(newUserId);
+      const { id } = await OneSignalApi.createUser(pushRegistration);
+      newDeviceId = id;
     }
+
+    const subscription = new Subscription();
+    subscription.deviceId = new Uuid(newDeviceId);
+    subscription.optedOut = false;
+    subscription.subscriptionToken = pushSubscription.w3cEndpoint.toString();
+    return subscription;
   }
 
   async isAlreadyRegisteredWithOneSignal() {
@@ -261,7 +268,7 @@ export class SubscriptionManager {
         }
     }
 
-    pushSubscriptionDetails.fcmEndpoint = new URL(newPushSubscription.endpoint);
+    pushSubscriptionDetails.w3cEndpoint = new URL(newPushSubscription.endpoint);
 
     // Retrieve p256dh and auth for encrypted web push protocol
     if (newPushSubscription.getKey) {
@@ -283,13 +290,13 @@ export class SubscriptionManager {
         // Base64 encode the ArrayBuffer (not URL-Safe, using standard Base64)
         let p256dh_base64encoded = btoa(
           String.fromCharCode.apply(null, new Uint8Array(p256dh)));
-        pushSubscriptionDetails.fcmP256dh = p256dh_base64encoded;
+        pushSubscriptionDetails.w3cP256dh = p256dh_base64encoded;
       }
       if (auth) {
         // Base64 encode the ArrayBuffer (not URL-Safe, using standard Base64)
         let auth_base64encoded = btoa(
           String.fromCharCode.apply(null, new Uint8Array(auth)));
-        pushSubscriptionDetails.fcmAuth = auth_base64encoded;
+        pushSubscriptionDetails.w3cAuth = auth_base64encoded;
       }
     }
 

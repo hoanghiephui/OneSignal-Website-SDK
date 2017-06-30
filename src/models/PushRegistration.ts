@@ -127,9 +127,9 @@ export class PushRegistration implements Serializable {
       operating_system_version: this.operatingSystemVersion,
       device_platform: this.devicePlatform,
       device_model: this.deviceModel,
-      identifier: Browser.safari ? this.subscription.safariDeviceToken : this.subscription.fcmEndpoint,
-      web_auth: this.subscription.fcmAuth,
-      web_p256: this.subscription.fcmP256dh
+      identifier: Browser.safari ? this.subscription.safariDeviceToken : this.subscription.w3cEndpoint,
+      web_auth: this.subscription.w3cAuth,
+      web_p256: this.subscription.w3cP256dh
     };
   }
 

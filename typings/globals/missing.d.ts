@@ -1,4 +1,3 @@
-import Context from '../../src/models/Context';
 interface Navigator {
   permissions: any;
 }
@@ -49,6 +48,7 @@ declare module ExtendableError {
 }
 
 declare var OneSignal: any;
+declare var __VERSION__: any;
 
 declare var ExtendableEvent;
 declare var swivel;

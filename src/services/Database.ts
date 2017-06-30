@@ -11,6 +11,7 @@ import { Timestamp } from '../models/Timestamp';
 import { Uuid } from '../models/Uuid';
 import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
 import IndexedDb from './IndexedDb';
+import * as Browser from 'bowser';
 
 enum DatabaseEventName {
   SET
@@ -220,8 +221,7 @@ export default class Database {
   async getSubscription(): Promise<Subscription> {
     const subscription = new Subscription();
     subscription.deviceId = new Uuid(await this.get<string>('Ids', 'userId'));
-    subscription.pushEndpoint = await this.get<string>('Options', 'subscriptionEndpoint');
-    subscription.pushToken = await this.get<string>('Ids', 'registrationId');
+    subscription.subscriptionToken = await this.get<string>('Options', 'registrationId');
 
     // The preferred database key to store our subscription
     const dbOptedOut = await this.get<boolean>('Options', 'optedOut');
@@ -244,10 +244,8 @@ export default class Database {
   async setSubscription(subscription: Subscription) {
     if (subscription.deviceId)
       await this.put('Ids', {type: 'userId', id: subscription.deviceId.value});
-    if (subscription.pushEndpoint)
-      await this.put('Options', {key: 'subscriptionEndpoint', value: subscription.pushEndpoint});
-    if (subscription.pushToken)
-      await this.put('Ids', {type: 'registrationId', id: subscription.pushToken});
+    if (subscription.subscriptionToken)
+      await this.put('Options', {key: 'registrationId', value: subscription.subscriptionToken});
     if (subscription.optedOut != null) // Checks if null or undefined, allows false
       await this.put('Options', {key: 'optedOut', value: subscription.optedOut});
   }

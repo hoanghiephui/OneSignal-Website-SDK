@@ -87,13 +87,6 @@ export class ServiceWorker {
     return (self as any).workerMessenger;
   }
 
-  static get context(): Context {
-    if (!(self as any).context) {
-      (self as any).context = new Context();
-    }
-    return (self as any).context;
-  }
-
   /**
    * Service worker entry point.
    */
@@ -141,8 +134,8 @@ export class ServiceWorker {
       const appConfig = AppConfig.deserialize(appConfigBundle);
       log.debug('[Service Worker] Received subscribe message.');
       const context = new Context(appConfig);
-      const deviceId = await context.subscriptionManager.subscribe();
-      ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.Subscribe, deviceId);
+      const subscription = await context.subscriptionManager.subscribe();
+      ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.Subscribe, subscription.serialize());
     });
   }
 

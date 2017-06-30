@@ -13,17 +13,22 @@ import MainHelper from './MainHelper';
 import TestHelper from './TestHelper';
 import { InvalidStateError, InvalidStateReason } from '../errors/InvalidStateError';
 import Context from '../models/Context';
+import { ServiceWorkerActiveState } from '../managers/ServiceWorkerManager';
 
 
 export default class SubscriptionHelper {
 
 
-  static registerForPush() {
+  static async registerForPush() {
     const env = SdkEnvironment.getWindowEnv();
     if (env === WindowEnvironmentKind.Host) {
       const context: Context = OneSignal.context;
 
-      context.serviceWorkerManager.getWorkerVersion()
+      const workerState = await context.serviceWorkerManager.getActiveState();
+      if (workerState == ServiceWorkerActiveState.WorkerA ||
+        workerState == ServiceWorkerActiveState.WorkerB) {
+        context.serviceWorkerManager.subscribeForPushNotifications();
+      }
     } else {
       throw new InvalidStateError(InvalidStateReason.UnsupportedEnvironment);
     }

@@ -7,6 +7,7 @@ import Context from '../models/Context';
 import Path from '../models/Path';
 import SdkEnvironment from './SdkEnvironment';
 import { Uuid } from '../models/Uuid';
+import { Subscription } from '../models/Subscription';
 
 
 export enum ServiceWorkerActiveState {
@@ -152,15 +153,17 @@ export class ServiceWorkerManager {
     });
   }
 
-  async subscribeForPushNotifications(): Promise<Uuid> {
+  async subscribeForPushNotifications(): Promise<Subscription> {
     const workerState = await this.getActiveState();
 
     if (workerState !== ServiceWorkerActiveState.WorkerA &&
       workerState !== ServiceWorkerActiveState.WorkerB) {
       throw new InvalidStateError(InvalidStateReason.ServiceWorkerNotActivated);
     }
-    return new Promise<Uuid>(resolve => {
-      this.context.workerMessenger.once(WorkerMessengerCommand.Subscribe, resolve);
+    return new Promise<Subscription>(resolve => {
+      this.context.workerMessenger.once(WorkerMessengerCommand.Subscribe, subscription => {
+        resolve(Subscription.deserialize(subscription));
+      });
       this.context.workerMessenger.unicast(WorkerMessengerCommand.Subscribe, this.context.appConfig.serialize());
     });
 

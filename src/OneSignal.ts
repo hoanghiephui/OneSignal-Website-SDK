@@ -20,7 +20,6 @@ import EventHelper from './helpers/EventHelper';
 import HttpHelper from './helpers/HttpHelper';
 import InitHelper from './helpers/InitHelper';
 import MainHelper from './helpers/MainHelper';
-import ServiceWorkerHelper from './helpers/ServiceWorkerHelper';
 import SubscriptionHelper from './helpers/SubscriptionHelper';
 import TestHelper from './helpers/TestHelper';
 import LimitStore from './LimitStore';
@@ -563,10 +562,10 @@ export default class OneSignal {
     Promise<{userId: Uuid, registrationId: string}> {
     await awaitOneSignalInitAndSupported();
     logMethodCall('getIdsAvailable', callback);
-    const { deviceId, pushToken } = await Database.getSubscription();
+    const { deviceId, subscriptionToken } = await Database.getSubscription();
     const bundle = {
       userId: deviceId,
-      registrationId: pushToken
+      registrationId: subscriptionToken
     };
     executeCallback(callback, bundle);
     return bundle;
@@ -582,7 +581,7 @@ export default class OneSignal {
     logMethodCall('isPushNotificationsEnabled', callback);
 
     const hasInsecureParentOrigin = await SubscriptionHelper.hasInsecureParentOrigin();
-    const { deviceId, pushToken, optedOut } = await Database.getSubscription();
+    const { deviceId, subscriptionToken, optedOut } = await Database.getSubscription();
     const notificationPermission = await OneSignal.getNotificationPermission();
 
     let isPushEnabled = false;
@@ -597,7 +596,7 @@ export default class OneSignal {
         (serviceWorkerActiveState === ServiceWorkerActiveState.WorkerB);
 
       isPushEnabled = !!(deviceId &&
-                      pushToken &&
+                      subscriptionToken &&
                       notificationPermission === NotificationPermission.Granted &&
                       !optedOut &&
                       serviceWorkerActive)
@@ -617,7 +616,7 @@ export default class OneSignal {
       }
     } else {
       isPushEnabled = !!(deviceId &&
-                         pushToken &&
+                         subscriptionToken &&
                          notificationPermission === NotificationPermission.Granted &&
                          !optedOut)
     }
@@ -701,9 +700,9 @@ export default class OneSignal {
     await awaitOneSignalInitAndSupported();
     logMethodCall('getRegistrationId', callback);
     const subscription = await Database.getSubscription();
-    const pushToken = subscription.pushToken;
-    executeCallback(callback, pushToken);
-    return pushToken;
+    const subscriptionToken = subscription.subscriptionToken;
+    executeCallback(callback, subscriptionToken);
+    return subscriptionToken;
   }
 
   /**
@@ -792,7 +791,6 @@ export default class OneSignal {
   static indexedDb = IndexedDb;
   static mainHelper = MainHelper;
   static subscriptionHelper = SubscriptionHelper;
-  static workerHelper = ServiceWorkerHelper;
   static httpHelper =  HttpHelper;
   static eventHelper = EventHelper;
   static initHelper = InitHelper;

@@ -13,7 +13,7 @@ export class AppConfig implements Serializable {
   cookieSyncEnabled?: boolean;
   safariWebId?: string;
   vapidPublicKey?: string;
-  userConfig: AppUserConfig;
+  userConfig?: AppUserConfig;
 
   serialize(): object {
     return {
