@@ -169,8 +169,7 @@ export class SubscriptionManager {
       Check to make sure our registration is activated, otherwise we can't
       subscribe for push.
      */
-    if (!self.registration.active ||
-      self.registration.active.state !== "activated") {
+    if (!self.registration.active) {
       throw new InvalidStateError(InvalidStateReason.ServiceWorkerNotActivated);
       /*
         Or should we wait for the service worker to be ready?

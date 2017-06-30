@@ -74,7 +74,7 @@ export class WorkerMessenger {
   constructor(context: Context) {
     this.context = context;
     this.replies = new WorkerMessengerReplyBuffer();
-    this.debug = true;
+    this.debug = false;
   }
 
   public log(..._) {
@@ -130,7 +130,7 @@ export class WorkerMessenger {
 
   async listen() {
     if (!(await this.isWorkerControllingPage())) {
-      this.log("[Worker Messenger] The page is not controlled by the service worker yet. Waiting...");
+      this.log("[Worker Messenger] The page is not controlled by the service worker yet. Waiting...", self.registration);
     }
     await this.waitUntilWorkerControlsPage();
     this.log("[Worker Messenger] The page is now controlled by the service worker.");
@@ -211,8 +211,7 @@ export class WorkerMessenger {
     const env = SdkEnvironment.getWindowEnv();
 
     if (env === WindowEnvironmentKind.ServiceWorker) {
-      return self.registration.active &&
-        self.registration.active.state === "activated";
+      return !!self.registration.active;
     } else {
       const workerState = await this.context.serviceWorkerManager.getActiveState();
       return workerState === ServiceWorkerActiveState.WorkerA ||

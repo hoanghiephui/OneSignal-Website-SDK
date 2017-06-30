@@ -28,7 +28,6 @@ declare var self: ServiceWorkerGlobalScope;
  * worker is registered to the iFrame pointing to subdomain.onesignal.com.
  */
 export class ServiceWorker {
-  static queries;
   static UNSUBSCRIBED_FROM_NOTIFICATIONS;
 
   /**
@@ -114,43 +113,6 @@ export class ServiceWorker {
       const subscription = await context.subscriptionManager.subscribe();
       ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.Subscribe, subscription.serialize());
     });
-  }
-
-  static processQuery(queryType, response) {
-    if (!ServiceWorker.queries) {
-      log.debug(`queryClient() was not called before processQuery(). ServiceWorker.queries is empty.`);
-    }
-    if (!ServiceWorker.queries[queryType]) {
-      log.debug(`Received query ${queryType} response ${response}. Expected ServiceWorker.queries to be preset to a hash.`);
-      return;
-    } else {
-      if (!ServiceWorker.queries[queryType].promise) {
-        log.debug(`Expected ServiceWorker.queries[${queryType}].promise value to be a Promise: ${ServiceWorker.queries[queryType]}`);
-        return;
-      }
-      ServiceWorker.queries[queryType].promiseResolve(response);
-    }
-  }
-
-  /**
-   * Messages the service worker client the specified queryString via postMessage(), and returns a Promise that
-   * resolves to the client's response.
-   * @param serviceWorkerClient A service worker client.
-   * @param queryType The message to send to the client.
-     */
-  static queryClient(serviceWorkerClient, queryType) {
-    if (!ServiceWorker.queries) {
-      ServiceWorker.queries = {};
-    }
-    if (!ServiceWorker.queries[queryType]) {
-      ServiceWorker.queries[queryType] = {};
-    }
-    ServiceWorker.queries[queryType].promise = new Promise((resolve, reject) => {
-      ServiceWorker.queries[queryType].promiseResolve = resolve;
-      ServiceWorker.queries[queryType].promiseReject = reject;
-      (swivel as any).emit(serviceWorkerClient.id, queryType);
-    });
-    return ServiceWorker.queries[queryType].promise;
   }
 
   /**
@@ -757,8 +719,7 @@ export class ServiceWorker {
   static onServiceWorkerActivated(event) {
     // The old service worker is gone now
     log.info(`%cOneSignal Service Worker activated (version ${Environment.version()}, ${SdkEnvironment.getWindowEnv().toString()} environment).`, getConsoleStyle('bold'));
-    var activationPromise = self.clients.claim();
-    event.waitUntil(activationPromise);
+    event.waitUntil(self.clients.claim());
   }
 
   static onPushSubscriptionChange(event) {
@@ -940,9 +901,6 @@ if (typeof self === "undefined" &&
 
 // Set logging to the appropriate level
 log.setDefaultLevel(SdkEnvironment.getBuildEnv() === BuildEnvironmentKind.Development ? (log as any).levels.TRACE : (log as any).levels.ERROR);
-
-// Print it's happy time!
-log.info(`%cOneSignal Service Worker loaded (version ${Environment.version()}, ${SdkEnvironment.getWindowEnv().toString()} environment).`, getConsoleStyle('bold'));
 
 // Run our main file
 if (typeof self !== "undefined") {
