@@ -177,12 +177,6 @@ export default class InitHelper {
     } else {
       opPromises.push(Database.put('Options', { key: 'notificationClickHandlerAction', value: 'navigate' }));
     }
-
-    if (OneSignal.config.userConfig.serviceWorkerRefetchRequests === false) {
-      opPromises.push(Database.put('Options', { key: 'serviceWorkerRefetchRequests', value: false }));
-    } else {
-      opPromises.push(Database.put('Options', { key: 'serviceWorkerRefetchRequests', value: true }));
-    }
     return Promise.all(opPromises);
   }
 

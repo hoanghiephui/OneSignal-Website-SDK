@@ -28,8 +28,6 @@ declare var self: ServiceWorkerGlobalScope;
  * worker is registered to the iFrame pointing to subdomain.onesignal.com.
  */
 export class ServiceWorker {
-  static REFETCH_REQUESTS;
-  static SKIP_REFETCH_REQUESTS;
   static queries;
   static UNSUBSCRIBED_FROM_NOTIFICATIONS;
 
@@ -100,27 +98,6 @@ export class ServiceWorker {
 
     // Install messaging event handlers for page <-> service worker communication
     ServiceWorker.setupMessageListeners();
-
-    // 3/2/16: Firefox does not send the Origin header when making CORS request through service workers, which breaks some sites that depend on the Origin header being present (https://bugzilla.mozilla.org/show_bug.cgi?id=1248463)
-    // Fix: If the browser is Firefox and is v44, use the following workaround:
-    if (Browser.firefox && Browser.version && contains(Browser.version, '44')) {
-      Database.get('Options', 'serviceWorkerRefetchRequests')
-        .then(refetchRequests => {
-          if (refetchRequests == true) {
-            log.info('Detected Firefox v44; installing fetch handler to refetch all requests.');
-            ServiceWorker.REFETCH_REQUESTS = true;
-            self.addEventListener('fetch', ServiceWorker.onFetch);
-          } else {
-            ServiceWorker.SKIP_REFETCH_REQUESTS = true;
-            log.info('Detected Firefox v44 but not refetching requests because option is set to false.');
-          }
-        })
-        .catch(e => {
-          log.error(e);
-          ServiceWorker.REFETCH_REQUESTS = true;
-          self.addEventListener('fetch', ServiceWorker.onFetch);
-        });
-    }
   }
 
   static async setupMessageListeners() {
@@ -771,19 +748,7 @@ export class ServiceWorker {
 
   static onServiceWorkerInstalled(event) {
     // At this point, the old service worker is still in control
-    log.debug(`Called %conServiceWorkerInstalled(${JSON.stringify(event, null, 4)}):`, getConsoleStyle('code'), event);
-    log.info(`Installing service worker: %c${(self as any).location.pathname}`, getConsoleStyle('code'), `(version ${Environment.version()})`);
-
-    if (contains((self as any).location.pathname, "OneSignalSDKWorker"))
-      var serviceWorkerVersionType = 'WORKER1_ONE_SIGNAL_SW_VERSION';
-    else
-      var serviceWorkerVersionType = 'WORKER2_ONE_SIGNAL_SW_VERSION';
-
-
-    event.waitUntil(
-        Database.put("Ids", {type: serviceWorkerVersionType, id: Environment.version()})
-            .then(() => self.skipWaiting())
-    );
+    event.waitUntil(self.skipWaiting());
   }
 
   /*
@@ -791,19 +756,9 @@ export class ServiceWorker {
    */
   static onServiceWorkerActivated(event) {
     // The old service worker is gone now
-    log.debug(`Called %conServiceWorkerActivated(${JSON.stringify(event, null, 4)}):`, getConsoleStyle('code'), event);
-    var activationPromise = self.clients.claim()
-                                        .then(() => Database.get('Ids', 'userId'))
-                                        .then(userId => {
-                                          if (self.registration && userId) {
-                                            //return ServiceWorker._subscribeForPush(self.registration).catch(e => log.error(e));
-                                          }
-                                        });
+    log.info(`%cOneSignal Service Worker activated (version ${Environment.version()}, ${SdkEnvironment.getWindowEnv().toString()} environment).`, getConsoleStyle('bold'));
+    var activationPromise = self.clients.claim();
     event.waitUntil(activationPromise);
-  }
-
-  static onFetch(event) {
-    event.respondWith(fetch(event.request));
   }
 
   static onPushSubscriptionChange(event) {

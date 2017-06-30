@@ -129,15 +129,17 @@ export class WorkerMessenger {
   }
 
   async listen() {
+    if (!(await this.isWorkerControllingPage())) {
+      this.log("[Worker Messenger] The page is not controlled by the service worker yet. Waiting...");
+    }
+    await this.waitUntilWorkerControlsPage();
+    this.log("[Worker Messenger] The page is now controlled by the service worker.");
     const env = SdkEnvironment.getWindowEnv();
 
     if (env === WindowEnvironmentKind.ServiceWorker) {
       self.addEventListener('message', this.onWorkerMessageReceivedFromPage.bind(this));
       this.log('[Worker Messenger] Service worker is now listening for messages.');
     } else {
-      if (!(await this.isWorkerControllingPage())) {
-        throw new InvalidStateError(InvalidStateReason.ServiceWorkerNotActivated);
-      }
       navigator.serviceWorker.addEventListener('message', this.onPageMessageReceivedFromServiceWorker.bind(this));
       this.log('[Worker Messenger] Page is now listening for messages.');
     }
@@ -205,16 +207,45 @@ export class WorkerMessenger {
     this.replies.deleteListenerRecords(command);
   }
 
-  private async isWorkerControllingPage(): Promise<boolean> {
+  async isWorkerControllingPage(): Promise<boolean> {
     const env = SdkEnvironment.getWindowEnv();
 
     if (env === WindowEnvironmentKind.ServiceWorker) {
-      return self.registration.active !== undefined &&
+      return self.registration.active &&
         self.registration.active.state === "activated";
     } else {
       const workerState = await this.context.serviceWorkerManager.getActiveState();
       return workerState === ServiceWorkerActiveState.WorkerA ||
         workerState === ServiceWorkerActiveState.WorkerB;
     }
+  }
+
+  /**
+   * For pages, waits until one of our workers is activated.
+   *
+   * For service workers, waits until the registration is active.
+   */
+  async waitUntilWorkerControlsPage() {
+    return new Promise<void>(async resolve => {
+      if (await this.isWorkerControllingPage()) {
+        resolve();
+      } else {
+        const env = SdkEnvironment.getWindowEnv();
+
+        if (env === WindowEnvironmentKind.ServiceWorker) {
+          self.addEventListener('activate', async e => {
+            if (await this.isWorkerControllingPage()) {
+              resolve();
+            }
+          });
+        } else {
+          navigator.serviceWorker.addEventListener('controllerchange', async e => {
+            if (await this.isWorkerControllingPage()) {
+              resolve();
+            }
+          });
+        }
+      }
+    });
   }
 }

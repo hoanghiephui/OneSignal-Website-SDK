@@ -56,7 +56,6 @@ export class AppUserConfig {
     webhooks: AppUserConfigWebhooks;
     notificationClickHandlerMatch: object;
     notificationClickHandlerAction: object;
-    serviceWorkerRefetchRequests: boolean;
     allowLocalhostAsSecureOrigin: boolean;
 }
 

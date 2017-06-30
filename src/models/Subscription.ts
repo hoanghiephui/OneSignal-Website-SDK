@@ -18,7 +18,7 @@ export class Subscription implements Serializable {
 
   serialize() {
     return {
-      safariDeviceId: this.deviceId.serialize(),
+      deviceId: this.deviceId.serialize(),
       subscriptionToken: this.subscriptionToken,
       optedOut: this.optedOut
     }
@@ -26,8 +26,8 @@ export class Subscription implements Serializable {
 
   static deserialize(bundle: any): Subscription {
     const subscription = new Subscription();
-    subscription.deviceId = Uuid.deserialize(bundle.safariDeviceId);
-    subscription.subscriptionToken = bundle.pushEndpoint;
+    subscription.deviceId = Uuid.deserialize(bundle.deviceId);
+    subscription.subscriptionToken = bundle.subscriptionToken;
     subscription.optedOut = bundle.optedOut;
     return subscription;
   }
