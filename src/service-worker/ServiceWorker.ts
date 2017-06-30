@@ -13,6 +13,7 @@ import OneSignalApi from '../OneSignalApi';
 import Database from '../services/Database';
 import { contains, getConsoleStyle, getDeviceTypeForBrowser, isValidUuid, trimUndefined } from '../utils';
 import { Uuid } from '../models/Uuid';
+import { AppConfig } from '../models/AppConfig';
 
 ///<reference path="../../typings/globals/service_worker_api/index.d.ts"/>
 declare var self: ServiceWorkerGlobalScope;
@@ -107,7 +108,6 @@ export class ServiceWorker {
     // Install messaging event handlers for page <-> service worker communication
     ServiceWorker.setupMessageListeners();
 
-
     // 3/2/16: Firefox does not send the Origin header when making CORS request through service workers, which breaks some sites that depend on the Origin header being present (https://bugzilla.mozilla.org/show_bug.cgi?id=1248463)
     // Fix: If the browser is Firefox and is v44, use the following workaround:
     if (Browser.firefox && Browser.version && contains(Browser.version, '44')) {
@@ -134,19 +134,14 @@ export class ServiceWorker {
     log.debug('Setting up message listeners.');
     ServiceWorker.workerMessenger.listen();
     ServiceWorker.workerMessenger.on(WorkerMessengerCommand.WorkerVersion, _ => {
-      log.debug('Received worker version message.');
-      log.debug('Broadcasting reply to all service worker clients.');
+      log.debug('[Service Worker] Received worker version message.');
       ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.WorkerVersion, Environment.version());
     });
-    ServiceWorker.workerMessenger.on(WorkerMessengerCommand.Subscribe, async data => {
-      log.debug('Received subscribe message.');
-      const appConfig = await OneSignalApi.getAppConfig(data.appId);
-      const subscriptionManager = new SubscriptionManager(OneSignal.context, {
-        safariWebId: appConfig.safariWebId,
-        appId: new Uuid(data.appId),
-        vapidPublicKey: appConfig.vapidPublicKey
-      });
-      const deviceId = await subscriptionManager.subscribe();
+    ServiceWorker.workerMessenger.on(WorkerMessengerCommand.Subscribe, async (appConfigBundle: any) => {
+      const appConfig = AppConfig.deserialize(appConfigBundle);
+      log.debug('[Service Worker] Received subscribe message.');
+      const context = new Context(appConfig);
+      const deviceId = await context.subscriptionManager.subscribe();
       ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.Subscribe, deviceId);
     });
   }

@@ -116,8 +116,8 @@ export default class MainHelper {
    * Returns true if the experimental HTTP permission request is being used to prompt the user.
    */
   static isUsingHttpPermissionRequest() {
-    return OneSignal.config.httpPermissionRequest &&
-      OneSignal.config.httpPermissionRequest.enable == true &&
+    return OneSignal.config.userConfig.httpPermissionRequest &&
+      OneSignal.config.userConfig.httpPermissionRequest.enable == true &&
       (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalProxyFrame ||
       SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.Host && SubscriptionHelper.isUsingSubscriptionWorkaround());
   }
@@ -126,8 +126,8 @@ export default class MainHelper {
    * Returns true if the site using the HTTP permission request is supplying its own modal prompt to the user.
    */
   static isUsingCustomHttpPermissionRequestPostModal() {
-    return (OneSignal.config.httpPermissionRequest &&
-    OneSignal.config.httpPermissionRequest.useCustomModal == true);
+    return (OneSignal.config.userConfig.httpPermissionRequest &&
+    OneSignal.config.userConfig.httpPermissionRequest.useCustomModal == true);
   }
 
   /**
@@ -259,25 +259,25 @@ export default class MainHelper {
 
   static showNotifyButton() {
     if (Environment.isBrowser() && !OneSignal.notifyButton) {
-      OneSignal.config.notifyButton = OneSignal.config.notifyButton || {};
-      if (OneSignal.config.bell) {
+      OneSignal.config.userConfig.notifyButton = OneSignal.config.userConfig.notifyButton || {};
+      if (OneSignal.config.userConfig.bell) {
         // If both bell and notifyButton, notifyButton's options take precedence
-        objectAssign(OneSignal.config.bell, OneSignal.config.notifyButton);
-        objectAssign(OneSignal.config.notifyButton, OneSignal.config.bell);
+        objectAssign(OneSignal.config.userConfig.bell, OneSignal.config.userConfig.notifyButton);
+        objectAssign(OneSignal.config.userConfig.notifyButton, OneSignal.config.userConfig.bell);
       }
-      if (OneSignal.config.notifyButton.displayPredicate &&
-        typeof OneSignal.config.notifyButton.displayPredicate === "function") {
-        Promise.resolve(OneSignal.config.notifyButton.displayPredicate())
+      if (OneSignal.config.userConfig.notifyButton.displayPredicate &&
+        typeof OneSignal.config.userConfig.notifyButton.displayPredicate === "function") {
+        Promise.resolve(OneSignal.config.userConfig.notifyButton.displayPredicate())
                .then(predicateValue => {
                  if (predicateValue !== false) {
-                   OneSignal.notifyButton = new Bell(OneSignal.config.notifyButton);
+                   OneSignal.notifyButton = new Bell(OneSignal.config.userConfig.notifyButton);
                    OneSignal.notifyButton.create();
                  } else {
                    log.debug('Notify button display predicate returned false so not showing the notify button.');
                  }
                });
       } else {
-        OneSignal.notifyButton = new Bell(OneSignal.config.notifyButton);
+        OneSignal.notifyButton = new Bell(OneSignal.config.userConfig.notifyButton);
         OneSignal.notifyButton.create();
       }
     }
@@ -286,12 +286,12 @@ export default class MainHelper {
   static checkAndDoHttpPermissionRequest() {
     log.debug('Called %ccheckAndDoHttpPermissionRequest()', getConsoleStyle('code'));
     if (this.isUsingHttpPermissionRequest()) {
-      if (OneSignal.config.autoRegister) {
+      if (OneSignal.config.userConfig.autoRegister) {
         OneSignal.showHttpPermissionRequest({_sdkCall: true})
                  .then(result => {
                    if (result === 'granted' && !this.isUsingCustomHttpPermissionRequestPostModal()) {
                      log.debug('Showing built-in post HTTP permission request in-page modal because permission is granted and not using custom modal.');
-                     this.showHttpPermissionRequestPostModal(OneSignal.config.httpPermissionRequest);
+                     this.showHttpPermissionRequestPostModal(OneSignal.config.userConfig.httpPermissionRequest);
                    }
                  });
       } else {
@@ -364,7 +364,7 @@ export default class MainHelper {
   }
 
   static getPromptOptionsQueryString() {
-    let promptOptions = OneSignal.config['promptOptions'];
+    let promptOptions = OneSignal.config.userConfig.promptOptions;
     let promptOptionsStr = '';
     if (promptOptions) {
       let hash = MainHelper.getPromptOptionsPostHash();
@@ -391,7 +391,7 @@ export default class MainHelper {
   }
 
   static getPromptOptionsPostHash() {
-    let promptOptions = OneSignal.config['promptOptions'];
+    let promptOptions = OneSignal.config.userConfig.promptOptions;
     if (promptOptions) {
       var legacyParams = {
         'exampleNotificationTitleDesktop': 'exampleNotificationTitle',
@@ -440,7 +440,7 @@ export default class MainHelper {
 
   static async getAppId(): Promise<Uuid> {
     if (OneSignal.config.appId) {
-      return Promise.resolve(new Uuid(OneSignal.config.appId));
+      return Promise.resolve(OneSignal.config.appId);
     }
     else {
       const uuid = await Database.get<string>('Ids', 'appId');

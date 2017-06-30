@@ -34,11 +34,9 @@ import Context from './models/Context';
 import { Notification } from './models/Notification';
 import { NotificationActionButton } from './models/NotificationActionButton';
 import { NotificationPermission } from './models/NotificationPermission';
-import Path from './models/Path';
 import { PermissionPromptType } from './models/PermissionPromptType';
 import { Uuid } from './models/Uuid';
 import { WindowEnvironmentKind } from './models/WindowEnvironmentKind';
-import CookieSyncer from './modules/CookieSyncer';
 import ProxyFrame from './modules/frames/ProxyFrame';
 import ProxyFrameHost from './modules/frames/ProxyFrameHost';
 import SubscriptionModal from './modules/frames/SubscriptionModal';
@@ -49,7 +47,7 @@ import OneSignalApi from './OneSignalApi';
 import Popover from './popover/Popover';
 import Crypto from './services/Crypto';
 import Database from './services/Database';
-import { DynamicResourceLoader, ResourceLoadState } from './services/DynamicResourceLoader';
+import { ResourceLoadState } from './services/DynamicResourceLoader';
 import IndexedDb from './services/IndexedDb';
 import {
   awaitOneSignalInitAndSupported,
@@ -61,7 +59,6 @@ import {
   prepareEmailForHashing,
 } from './utils';
 import { ValidatorUtils } from './utils/ValidatorUtils';
-import { WorkerMessenger } from './libraries/WorkerMessenger';
 
 
 export default class OneSignal {
@@ -142,56 +139,16 @@ export default class OneSignal {
   static async init(options) {
     logMethodCall('init');
 
-    // If Safari - add 'fetch' pollyfill if it isn't already added.
-    if (Browser.safari && typeof window.fetch == "undefined") {
-      log.debug('Loading fetch polyfill for Safari..');
-      try {
-        await OneSignal.context.dynamicResourceLoader.loadFetchPolyfill();
-        log.debug('Done loading fetch polyfill.');
-      } catch (e) {
-        log.debug('Error loading fetch polyfill:', e);
-      }
-    }
+    InitHelper.ponyfillSafariFetch();
+    InitHelper.errorIfInitAlreadyCalled();
 
-    if (OneSignal._initCalled) {
-      throw new SdkInitError(SdkInitErrorKind.MultipleInitialization);
-    }
-    OneSignal._initCalled = true;
+    const appConfig = await InitHelper.downloadAndMergeAppConfig(options);
+    log.debug(`OneSignal: Final web app config: %c${JSON.stringify(appConfig, null, 4)}`, getConsoleStyle('code'));
+    OneSignal.context = new Context(appConfig);
+    OneSignal.config = OneSignal.context.appConfig;
+    OneSignal.context.workerMessenger.listen();
 
-    let appConfig: AppConfig;
-    try {
-      appConfig = await OneSignalApi.getAppConfig(new Uuid(options.appId));
-      OneSignal.cookieSyncer = new CookieSyncer(appConfig.cookieSyncEnabled);
-      OneSignal.config = InitHelper.getMergedLegacyConfig(options, appConfig);
-      log.debug(`OneSignal: Final web app config: %c${JSON.stringify(OneSignal.config, null, 4)}`, getConsoleStyle('code'));
-
-      OneSignal.context.subscriptionManager = new SubscriptionManager(OneSignal.context, {
-        safariWebId: appConfig.safariWebId,
-        appId: new Uuid(options.appId),
-        vapidPublicKey: appConfig.vapidPublicKey
-      });
-
-      OneSignal.context.serviceWorkerManager = new ServiceWorkerManager(OneSignal.context, {
-        workerAPath: new Path((options.path || '/') + SdkEnvironment.getBuildEnvPrefix() + OneSignal.SERVICE_WORKER_PATH),
-        workerBPath: new Path((options.path || '/') + SdkEnvironment.getBuildEnvPrefix() + OneSignal.SERVICE_WORKER_UPDATER_PATH),
-        registrationOptions: OneSignal.SERVICE_WORKER_PARAM || { scope: '/'  }
-      });
-
-      OneSignal.context.workerMessenger = new WorkerMessenger(OneSignal.context);
-      OneSignal.context.workerMessenger.listen();
-    } catch (e) {
-      if (e) {
-        if (e.code === 1) {
-          throw new SdkInitError(SdkInitErrorKind.InvalidAppId)
-        }
-        else if (e.code === 2) {
-          throw new SdkInitError(SdkInitErrorKind.AppNotConfiguredForWebPush);
-        }
-      }
-      throw e;
-    }
-
-    if (Browser.safari && !OneSignal.config.safari_web_id) {
+    if (Browser.safari && !OneSignal.config.safariWebId) {
       /**
        * Don't throw an error for missing Safari config; many users set up
        * support on Chrome/Firefox and don't intend to support Safari but don't
@@ -325,7 +282,7 @@ export default class OneSignal {
       log.debug('Not showing slidedown permission message because styles failed to load.');
       return;
     }
-    OneSignal.popover = new Popover(OneSignal.config.promptOptions);
+    OneSignal.popover = new Popover(OneSignal.config.userConfig.promptOptions);
     OneSignal.popover.create();
     log.debug('Showing the HTTP popover.');
     if (OneSignal.notifyButton &&
@@ -489,7 +446,7 @@ export default class OneSignal {
       .then(() => {
         let safariWebId = null;
         if (OneSignal.config) {
-          safariWebId = OneSignal.config.safari_web_id;
+          safariWebId = OneSignal.config.safariWebId;
         }
         return MainHelper.getNotificationPermission(safariWebId);
       })
@@ -596,7 +553,7 @@ export default class OneSignal {
     OneSignal.once(OneSignal.EVENTS.NOTIFICATION_CLICKED, notification => {
       executeCallback(callback, notification);
     });
-    EventHelper.fireStoredNotificationClicks(OneSignal.config.pageUrl);
+    EventHelper.fireStoredNotificationClicks(OneSignal.config.pageUrl || OneSignal.config.userConfig.pageUrl);
   }
   /**
    * @PublicApi
@@ -877,7 +834,6 @@ export default class OneSignal {
   static _showingHttpPermissionRequest = false;
   static context: Context;
   static checkAndWipeUserSubscription = function () { }
-  static cookieSyncer: CookieSyncer;
   static crypto = Crypto;
 
   static notificationPermission = NotificationPermission;
@@ -1003,9 +959,6 @@ export default class OneSignal {
   static off(..._) {}
   static once(..._) {}
 }
-
-OneSignal.context = new Context();
-OneSignal.context.dynamicResourceLoader = new DynamicResourceLoader();
 
 Object.defineProperty(OneSignal, 'LOGGING', {
   get: function() {

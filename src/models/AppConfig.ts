@@ -1,31 +1,66 @@
 import { Uuid } from "./Uuid";
+import { Serializable } from './Serializable';
 
 
-export class AppConfig {
-    appId: Uuid;
-    subdomain: string;
-    /**
-     * Describes whether the subdomain HTTP users subscribe to should belong to
-     * the legacy domain onesignal.com, or the newer domain os.tc.
-     */
-    httpUseOneSignalCom?: boolean;
-    cookieSyncEnabled?: boolean;
-    safariWebId?: string;
-    vapidPublicKey?: string;
+export class AppConfig implements Serializable {
+  appId: Uuid;
+  subdomain: string;
+  /**
+   * Describes whether the subdomain HTTP users subscribe to should belong to
+   * the legacy domain onesignal.com, or the newer domain os.tc.
+   */
+  httpUseOneSignalCom?: boolean;
+  cookieSyncEnabled?: boolean;
+  safariWebId?: string;
+  vapidPublicKey?: string;
+  userConfig: AppUserConfig;
+
+  serialize(): object {
+    return {
+      appId: this.appId.serialize(),
+      subdomain: this.subdomain,
+      httpUseOneSignalCom: this.httpUseOneSignalCom,
+      cookieSyncEnabled: this.cookieSyncEnabled,
+      safariWebId: this.safariWebId,
+      vapidPublicKey: this.vapidPublicKey,
+      userConfig: this.userConfig
+    }
+  }
+
+  static deserialize(bundle: any): AppConfig {
+    const appConfig = new AppConfig();
+    appConfig.appId = Uuid.deserialize(bundle.appId);
+    appConfig.subdomain = bundle.subdomain;
+    appConfig.httpUseOneSignalCom = bundle.httpUseOneSignalCom;
+    appConfig.cookieSyncEnabled = bundle.cookieSyncEnabled;
+    appConfig.safariWebId = bundle.safariWebId;
+    appConfig.vapidPublicKey = bundle.vapidPublicKey;
+    appConfig.userConfig = bundle.userConfig;
+    return appConfig;
+  }
 }
 
 export class AppUserConfig {
+    appId: string;
     autoRegister?: boolean;
     path?: string;
+    serviceWorkerPath: string;
+    serviceWorkerUpdaterPath: string;
+    serviceWorkerParam: any;
+    subdomainName: string;
     httpPermissionRequest: AppUserConfigHttpPermissionRequest;
     promptOptions: AppUserConfigPromptOptions;
     welcomeNotification: AppUserConfigWelcomeNotification;
     notifyButton: AppUserConfigNotifyButton;
     persistNotification: boolean;
     webhooks: AppUserConfigWebhooks;
+    notificationClickHandlerMatch: object;
+    notificationClickHandlerAction: object;
+    serviceWorkerRefetchRequests: boolean;
+    allowLocalhostAsSecureOrigin: boolean;
 }
 
-export class AppUserConfigHttpPermissionRequest {
+export interface AppUserConfigHttpPermissionRequest {
   enable: boolean;
   useCustomModal: boolean;
   modalTitle: string;
@@ -33,7 +68,7 @@ export class AppUserConfigHttpPermissionRequest {
   modalButtonText: string;
 }
 
-export class AppUserConfigPromptOptions {
+export interface AppUserConfigPromptOptions {
   subscribeText: string;
   showGraphic: boolean;
   timeout: number;
@@ -49,13 +84,13 @@ export class AppUserConfigPromptOptions {
   showCredit: string;
 }
 
-export class AppUserConfigWelcomeNotification {
+export interface AppUserConfigWelcomeNotification {
   disable: boolean;
   title: string;
   message: string;
 }
 
-export class AppUserConfigNotifyButton {
+export interface AppUserConfigNotifyButton {
   enable: boolean;
   displayPredicate: Function;
   size: "small" | "medium" | "large";
@@ -92,11 +127,10 @@ export class AppUserConfigNotifyButton {
   };
 }
 
-export class AppUserConfigWebhooks {
-  subscribeText: string;
-  showGraphic: boolean;
-  timeout: number;
-
+export interface AppUserConfigWebhooks {
+  cors: boolean;
+  'notification.displayed': string;
+  'notification.clicked': string;
 }
 
 

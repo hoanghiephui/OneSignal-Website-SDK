@@ -11,23 +11,22 @@ import { getConsoleStyle, timeoutPromise } from '../utils';
 import EventHelper from './EventHelper';
 import MainHelper from './MainHelper';
 import TestHelper from './TestHelper';
+import { InvalidStateError, InvalidStateReason } from '../errors/InvalidStateError';
+import Context from '../models/Context';
 
 
 export default class SubscriptionHelper {
-  /*
-   * Checks whether we should continue.
-   * Register correct kind of service worker.
-   */
-  static registerForW3CPush(_) {
-    // Refactored
-  }
 
-  /*
-   * Waits until service worker is ready.
-   * Opens messagePort to listen to SW messages.
-   */
-  static enableNotifications(_) { // is ServiceWorkerRegistration type
-    // Refactored
+
+  static registerForPush() {
+    const env = SdkEnvironment.getWindowEnv();
+    if (env === WindowEnvironmentKind.Host) {
+      const context: Context = OneSignal.context;
+
+      context.serviceWorkerManager.getWorkerVersion()
+    } else {
+      throw new InvalidStateError(InvalidStateReason.UnsupportedEnvironment);
+    }
   }
 
   /**
@@ -60,7 +59,7 @@ export default class SubscriptionHelper {
     }
 
     return ((SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.Host) &&
-    (!!OneSignal.config.subdomainName || location.protocol === 'http:'));
+    (!!OneSignal.config.subdomain || location.protocol === 'http:'));
   }
 
   /**
@@ -85,7 +84,7 @@ export default class SubscriptionHelper {
   }
 
   static isLocalhostAllowedAsSecureOrigin() {
-    return OneSignal.config && OneSignal.config.allowLocalhostAsSecureOrigin === true;
+    return OneSignal.config && OneSignal.config.userConfig.allowLocalhostAsSecureOrigin === true;
   }
 
   /*

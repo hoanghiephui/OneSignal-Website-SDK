@@ -505,19 +505,3 @@ export function incrementSdkLoadCount() {
 export function prepareEmailForHashing(email: string): string {
   return email.replace(/\s/g, '').toLowerCase();
 }
-
-// https://github.com/web-push-libs/web-push/blob/3d7cb9cf2ad765763ea4874624e4335f9dd1467d/README.md#using-vapid-key-for-applicationserverkey
-export function urlBase64ToUint8Array(base64String) {
-  const padding = ('=' as any).repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/\-/g, '+')
-    .replace(/_/g, '/');
-
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}

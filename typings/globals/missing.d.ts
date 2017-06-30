@@ -1,3 +1,4 @@
+import Context from '../../src/models/Context';
 interface Navigator {
   permissions: any;
 }

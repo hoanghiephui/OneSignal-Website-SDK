@@ -14,7 +14,7 @@ export default class Path {
     if (!path) {
       throw new InvalidArgumentError('path', InvalidArgumentReason.Empty);
     }
-    this.path = path.toLowerCase().trim();
+    this.path = path.trim();
   }
 
   getFileName(): string {

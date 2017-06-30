@@ -19,6 +19,10 @@ export class Uuid implements Serializable {
     }
   }
 
+  toString() {
+    return this.uuid;
+  }
+
   static generate() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
       var crypto = typeof window === "undefined" ? (global as any).crypto : (window.crypto || (<any>window).msCrypto);
@@ -38,7 +42,7 @@ export class Uuid implements Serializable {
     return this.value;
   }
 
-  deserialize(uuid: string) {
-    this.uuid = uuid;
+  static deserialize(uuid: string) {
+    return new Uuid(uuid);
   }
 }

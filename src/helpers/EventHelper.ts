@@ -43,7 +43,7 @@ export default class EventHelper {
         MainHelper.getAppId()
       ])
              .then(([userId, appId]) => {
-               let welcome_notification_opts = OneSignal.config['welcomeNotification'];
+               let welcome_notification_opts = OneSignal.config.userConfig.welcomeNotification;
                let welcome_notification_disabled = ((welcome_notification_opts !== undefined) &&
                (welcome_notification_opts['disable'] === true));
                let title = ((welcome_notification_opts !== undefined) &&

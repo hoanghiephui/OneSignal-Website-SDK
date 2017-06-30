@@ -282,7 +282,7 @@ export default class Postmam {
     if (!OneSignal.config) {
       var subdomain = "x";
     } else {
-      var subdomain = OneSignal.config.subdomainName as string;
+      var subdomain = OneSignal.config.subdomain as string;
     }
 
     const otherAllowedOrigins = this.generateSafeOrigins(this.receiveFromOrigin);

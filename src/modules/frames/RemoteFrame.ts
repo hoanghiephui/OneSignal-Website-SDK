@@ -97,8 +97,7 @@ export default class RemoteFrame implements Disposable {
     const isPushEnabled = await OneSignal.isPushNotificationsEnabled();
     if (!isPushEnabled) {
       try {
-        const workerRegistration = await navigator.serviceWorker.register(SdkEnvironment.getBuildEnvPrefix() + OneSignal.SERVICE_WORKER_PATH, OneSignal.SERVICE_WORKER_PARAM)
-        SubscriptionHelper.enableNotifications(workerRegistration);
+        await SubscriptionHelper.registerForPush();
       } catch (e) {
         log.error('Failed to register service worker in the popup/modal:', e);
       }

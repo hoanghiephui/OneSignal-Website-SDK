@@ -6,28 +6,30 @@ import { WorkerMessengerCommand } from '../libraries/WorkerMessenger';
 import Context from '../models/Context';
 import Path from '../models/Path';
 import SdkEnvironment from './SdkEnvironment';
+import { Uuid } from '../models/Uuid';
 
 
 export enum ServiceWorkerActiveState {
   /**
    * OneSignalSDKWorker.js, or the equivalent custom file name, is active.
    */
-  WorkerA = <any>'Worker A (Main)',
+  WorkerA = 'Worker A (Main)',
   /**
    * OneSignalSDKUpdaterWorker.js, or the equivalent custom file name, is
    * active.
    */
-  WorkerB = <any>'Worker B (Updater)',
+  WorkerB = 'Worker B (Updater)',
   /**
    * A service worker is active, but it is neither OneSignalSDKWorker.js nor
    * OneSignalSDKUpdaterWorker.js (or the equivalent custom file names as
    * provided by user config).
    */
-  ThirdParty = <any>'3rd Party',
+  ThirdParty = '3rd Party',
   /**
    * No service worker is installed.
    */
-  None = <any>'None'
+  None = 'None',
+  Bypassed = 'Bypassed'
 }
 
 export interface ServiceWorkerManagerConfig {
@@ -107,6 +109,17 @@ export class ServiceWorkerManager {
        */
       return ServiceWorkerActiveState.ThirdParty;
     }
+
+    /*
+      A service worker registration can be both active and in the controlling
+      scope of the current page, but if the page was hard refreshed to bypass
+      the cache (e.g. Ctrl + Shift + R), a service worker will not control the
+      page.
+     */
+    if (!navigator.serviceWorker.controller) {
+      return ServiceWorkerActiveState.Bypassed;
+    }
+
     /*
         At this point, there is an active service worker registration
         controlling this page.
@@ -125,7 +138,6 @@ export class ServiceWorkerManager {
   }
 
   async getWorkerVersion(): Promise<number> {
-    // TODO: Finish
     const workerState = await this.getActiveState();
 
     if (workerState !== ServiceWorkerActiveState.WorkerA &&
@@ -133,9 +145,25 @@ export class ServiceWorkerManager {
       throw new InvalidStateError(InvalidStateReason.ServiceWorkerNotActivated);
     }
     return new Promise<number>(resolve => {
-      this.context.workerMessenger.once(WorkerMessengerCommand.WorkerVersion, resolve);
+      this.context.workerMessenger.once(WorkerMessengerCommand.WorkerVersion, workerVersion => {
+        resolve(Number(workerVersion));
+      });
       this.context.workerMessenger.unicast(WorkerMessengerCommand.WorkerVersion);
     });
+  }
+
+  async subscribeForPushNotifications(): Promise<Uuid> {
+    const workerState = await this.getActiveState();
+
+    if (workerState !== ServiceWorkerActiveState.WorkerA &&
+      workerState !== ServiceWorkerActiveState.WorkerB) {
+      throw new InvalidStateError(InvalidStateReason.ServiceWorkerNotActivated);
+    }
+    return new Promise<Uuid>(resolve => {
+      this.context.workerMessenger.once(WorkerMessengerCommand.Subscribe, resolve);
+      this.context.workerMessenger.unicast(WorkerMessengerCommand.Subscribe, this.context.appConfig.serialize());
+    });
+
   }
 
   /**
@@ -201,6 +229,15 @@ export class ServiceWorkerManager {
     } else if (workerState === ServiceWorkerActiveState.WorkerB) {
       workerDirectory = this.config.workerBPath.getPathWithoutFileName();
       workerFileName = this.config.workerBPath.getFileName();
+    } else if (workerState === ServiceWorkerActiveState.Bypassed) {
+      /*
+        If the page is hard refreshed bypassing the cache, no service worker
+        will control the page.
+
+        It doesn't matter if we try to reinstall an existing worker; still no
+        service worker will control the page after installation.
+       */
+      throw new InvalidStateError(InvalidStateReason.UnsupportedEnvironment);
     }
 
     fullWorkerPath = `${workerDirectory}/${workerFileName}`;

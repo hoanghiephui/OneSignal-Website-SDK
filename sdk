@@ -239,6 +239,7 @@ async function runBuildPipeline(context) {
       } else {
         // Occurs every time the watch triggers a new build and completes
         await BundlerModule.runModuleBundler(context);
+        await SourceMapsModule.preSourceMapDuplicate(context);
         await SourceMapsModule.transformSourceMaps(context);
         await DistributeModule.distributeBundleFiles(context);
       }
@@ -648,6 +649,37 @@ class BundlerModule {
 }
 
 class SourceMapsModule {
+  static async preSourceMapDuplicate(context) {
+    if (context.config.get('disableTransformSourceMaps')) {
+      console.log(`${chalk.blue('[Transform Source Maps]')} Skipping transform source maps because --disableTransformSourceMaps is enabled.`);
+      console.log();
+      return;
+    }
+
+    const prefix = BundlerModule.getBuildPrefix(context.config);
+    const buildDir = context.config.get('build:bundlerOutDir');
+
+    Utils.ensureNonEmptyCopyFile(
+      path.resolve(path.join(buildDir, prefix + 'OneSignalSDK.js')),
+      path.resolve(path.join(buildDir, prefix + 'OneSignalSDKWorker.js'))
+    );
+
+    Utils.ensureNonEmptyCopyFile(
+      path.resolve(path.join(buildDir, prefix + 'OneSignalSDK.js.map')),
+      path.resolve(path.join(buildDir, prefix + 'OneSignalSDKWorker.js.map'))
+    );
+
+    Utils.ensureNonEmptyCopyFile(
+      path.resolve(path.join(buildDir, prefix + 'OneSignalSDK.js')),
+      path.resolve(path.join(buildDir, prefix + 'OneSignalSDKUpdaterWorker.js'))
+    );
+
+    Utils.ensureNonEmptyCopyFile(
+      path.resolve(path.join(buildDir, prefix + 'OneSignalSDK.js.map')),
+      path.resolve(path.join(buildDir, prefix + 'OneSignalSDKUpdaterWorker.js.map'))
+    );
+  }
+
   /**
    * 6. Transforms multi-level source map back to original source map using Sorcery.
    *
@@ -695,63 +727,89 @@ class DistributeModule {
 
     /**
      * Copy: ./OneSignalSDK.js  ==>  OneSignal/public/sdks/OneSignalSDK.js
-     *                               OneSignal/public/sdks/OneSignalSDKWorker.js
-     *                               OneSignal/public/OneSignalSDKWorker.js
-     *                               OneSignal/public/OneSignalSDKUpdaterWorker.js
      *                               ./dist/OneSignalSDK.js
      */
     {
       let sourceFilename = 'OneSignalSDK.js';
       Utils.ensureNonEmptyCopyFile(
         path.resolve(path.join(buildDir, prefix + sourceFilename)),
-        path.resolve(path.join(railsPublicSdksDir, prefix + 'OneSignalSDK.js'))
+        path.resolve(path.join(railsPublicSdksDir, prefix + sourceFilename))
       );
       Utils.ensureNonEmptyCopyFile(
         path.resolve(path.join(buildDir, prefix + sourceFilename)),
-        path.resolve(path.join(railsPublicSdksDir, prefix + 'OneSignalSDKWorker.js'))
+        path.resolve(path.join('dist', prefix + sourceFilename))
+      );
+    }
+
+    /**
+     * Copy: ./OneSignalSDKWorker.js  ==>  OneSignal/public/sdks/OneSignalSDKWorker.js
+     *                               OneSignal/public/OneSignalSDKWorker.js
+     */
+    {
+      let sourceFilename = 'OneSignalSDKWorker.js';
+      Utils.ensureNonEmptyCopyFile(
+        path.resolve(path.join(buildDir, prefix + sourceFilename)),
+        path.resolve(path.join(railsPublicSdksDir, prefix + sourceFilename))
       );
       Utils.ensureNonEmptyCopyFile(
         path.resolve(path.join(buildDir, prefix + sourceFilename)),
-        path.resolve(path.join(railsPublicDir, prefix + 'OneSignalSDKWorker.js'))
+        path.resolve(path.join(railsPublicDir, prefix + sourceFilename))
       );
+    }
+
+    /**
+     * Copy: ./OneSignalSDKUpdaterWorker.js  ==>  (none in SDKs folder)
+     *                                            OneSignal/public/OneSignalSDKUpdaterWorker.js
+     */
+    {
+      let sourceFilename = 'OneSignalSDKUpdaterWorker.js';
       Utils.ensureNonEmptyCopyFile(
         path.resolve(path.join(buildDir, prefix + sourceFilename)),
-        path.resolve(path.join(railsPublicDir, prefix + 'OneSignalSDKUpdaterWorker.js'))
-      );
-      Utils.ensureNonEmptyCopyFile(
-        path.resolve(path.join(buildDir, prefix + sourceFilename)),
-        path.resolve(path.join('dist', prefix + 'OneSignalSDK.js'))
+        path.resolve(path.join(railsPublicDir, prefix + sourceFilename))
       );
     }
 
     /**
     * Copy: ./OneSignalSDK.js.map  ==>  OneSignal/public/sdks/OneSignalSDK.js.map
-    *                                   OneSignal/public/sdks/OneSignalSDKWorker.js.map
-    *                                   OneSignal/public/OneSignalSDKWorker.js.map
-    *                                   OneSignal/public/OneSignalSDKUpdaterWorker.js.map
      *                                  ./dist/OneSignalSDK.js.map
     */
     {
       let sourceFilename = 'OneSignalSDK.js.map';
       Utils.ensureNonEmptyCopyFile(
         path.resolve(path.join(buildDir, prefix + sourceFilename)),
-        path.resolve(path.join(railsPublicSdksDir, prefix + 'OneSignalSDK.js.map'))
+        path.resolve(path.join(railsPublicSdksDir, prefix + sourceFilename))
       );
       Utils.ensureNonEmptyCopyFile(
         path.resolve(path.join(buildDir, prefix + sourceFilename)),
-        path.resolve(path.join(railsPublicSdksDir, prefix + 'OneSignalSDKWorker.js.map'))
+        path.resolve(path.join('dist', prefix + sourceFilename))
+      );
+    }
+
+    /**
+    * Copy: ./OneSignalSDKWorker.js.map  ==>  OneSignal/public/sdks/OneSignalSDKWorker.js.map
+    *                                         OneSignal/public/OneSignalSDKWorker.js.map
+    */
+    {
+      let sourceFilename = 'OneSignalSDKWorker.js.map';
+      Utils.ensureNonEmptyCopyFile(
+        path.resolve(path.join(buildDir, prefix + sourceFilename)),
+        path.resolve(path.join(railsPublicSdksDir, prefix + sourceFilename))
       );
       Utils.ensureNonEmptyCopyFile(
         path.resolve(path.join(buildDir, prefix + sourceFilename)),
-        path.resolve(path.join(railsPublicDir, prefix + 'OneSignalSDKWorker.js.map'))
+        path.resolve(path.join(railsPublicDir, prefix + sourceFilename))
       );
+    }
+
+    /**
+    * Copy: ./OneSignalSDKUpdaterWorker.js.map  ==>  (none in SDKs folder)
+    *                                                OneSignal/public/OneSignalSDKUpdaterWorker.js.map
+    */
+    {
+      let sourceFilename = 'OneSignalSDKUpdaterWorker.js.map';
       Utils.ensureNonEmptyCopyFile(
         path.resolve(path.join(buildDir, prefix + sourceFilename)),
-        path.resolve(path.join(railsPublicDir, prefix + 'OneSignalSDKUpdaterWorker.js.map'))
-      );
-      Utils.ensureNonEmptyCopyFile(
-        path.resolve(path.join(buildDir, prefix + sourceFilename)),
-        path.resolve(path.join('dist', prefix + 'OneSignalSDK.js.map'))
+        path.resolve(path.join(railsPublicSdksDir, prefix + sourceFilename))
       );
     }
 

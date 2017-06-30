@@ -5,6 +5,7 @@ import { ServiceWorkerActiveState } from '../managers/ServiceWorkerManager';
 import Context from '../models/Context';
 import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
 import * as log from 'loglevel';
+import { Serializable } from '../models/Serializable';
 
 
 export enum WorkerMessengerCommand {
@@ -14,7 +15,7 @@ export enum WorkerMessengerCommand {
 
 export interface WorkerMessengerMessage {
   command: WorkerMessengerCommand,
-  payload: any
+  payload: WorkerMessengerPayload
 }
 
 export interface WorkerMessengerReplyBufferRecord {
@@ -53,7 +54,7 @@ export class WorkerMessengerReplyBuffer {
 
   public deleteListenerRecord(command: WorkerMessengerCommand, targetRecord: any) {
     const listenersForCommand = this.replies[command.toString()];
-    for (let listenerRecordIndex = listenersForCommand.length - 1; listenerRecordIndex > 0; listenerRecordIndex--) {
+    for (let listenerRecordIndex = listenersForCommand.length - 1; listenerRecordIndex >= 0; listenerRecordIndex--) {
       const listenerRecord = listenersForCommand[listenerRecordIndex];
       if (listenerRecord === targetRecord) {
         listenersForCommand.splice(listenerRecordIndex, 1);
@@ -61,6 +62,8 @@ export class WorkerMessengerReplyBuffer {
     }
   }
 }
+
+export type WorkerMessengerPayload = Serializable | number | string | object | boolean;
 
 export class WorkerMessenger {
 
@@ -83,7 +86,7 @@ export class WorkerMessenger {
   /**
    * Broadcasts a message from a service worker to all controlled clients.
    */
-  async broadcast(command: WorkerMessengerCommand, payload: any) {
+  async broadcast(command: WorkerMessengerCommand, payload: WorkerMessengerPayload) {
     const env = SdkEnvironment.getWindowEnv();
 
     if (env !== WindowEnvironmentKind.ServiceWorker) {
@@ -100,7 +103,7 @@ export class WorkerMessenger {
     }
   }
 
-  async unicast(command: WorkerMessengerCommand, payload?: any, windowClient?: WindowClient) {
+  async unicast(command: WorkerMessengerCommand, payload?: WorkerMessengerPayload, windowClient?: WindowClient) {
     const env = SdkEnvironment.getWindowEnv();
 
     if (env === WindowEnvironmentKind.ServiceWorker) {
@@ -151,16 +154,17 @@ export class WorkerMessenger {
     for (let listenerRecord of listenerRecords) {
       if (listenerRecord.onceListenerOnly) {
         listenersToRemove.push(listenerRecord);
-      } else {
-        listenersToCall.push(listenerRecord);
       }
+      listenersToCall.push(listenerRecord);
     }
-    for (let i = listenersToRemove.length - 1; i > 0; i--) {
+    for (let i = listenersToRemove.length - 1; i >= 0; i--) {
       const listenerRecord = listenersToRemove[i];
       this.replies.deleteListenerRecord(data.command, listenerRecord);
+      this.log(`[Worker Messenger] SW: Deleted listener record:`, data.command.toString(), listenerRecord);
     }
     for (let listenerRecord of listenersToCall) {
-      listenerRecord.callback.apply(null, data.payload);
+      this.log(`[Worker Messenger] SW: Calling callback for listener record:`, listenerRecord);
+      listenerRecord.callback.apply(null, [data.payload]);
     }
   }
 
@@ -175,16 +179,17 @@ export class WorkerMessenger {
     for (let listenerRecord of listenerRecords) {
       if (listenerRecord.onceListenerOnly) {
         listenersToRemove.push(listenerRecord);
-      } else {
-        listenersToCall.push(listenerRecord);
       }
+      listenersToCall.push(listenerRecord);
     }
-    for (let i = listenersToRemove.length - 1; i > 0; i--) {
+    for (let i = listenersToRemove.length - 1; i >= 0; i--) {
       const listenerRecord = listenersToRemove[i];
       this.replies.deleteListenerRecord(data.command, listenerRecord);
+      this.log(`[Worker Messenger] Page: Deleted listener record:`, data.command.toString(), listenerRecord);
     }
     for (let listenerRecord of listenersToCall) {
-      listenerRecord.callback.apply(null, data.payload);
+      this.log(`[Worker Messenger] Page: Calling callback for listener record:`, listenerRecord);
+      listenerRecord.callback.apply(null, [data.payload]);
     }
   }
 
