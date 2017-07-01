@@ -10,7 +10,7 @@ export default class Environment {
   }
 
   static version() {
-    return (typeof __VERSION__ === "undefined" ? 1 : __VERSION__);
+    return (typeof __VERSION__ === "undefined" ? 1 : Number(__VERSION__));
   }
 
   static get TRADITIONAL_CHINESE_LANGUAGE_TAG() {

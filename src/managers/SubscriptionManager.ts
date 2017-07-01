@@ -19,7 +19,6 @@ import { RawPushSubscription } from '../models/RawPushSubscription';
 import { SubscriptionStateKind } from '../models/SubscriptionStateKind';
 import { Uuid } from '../models/Uuid';
 import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
-import OneSignal from '../OneSignal';
 import OneSignalApi from '../OneSignalApi';
 import Database from '../services/Database';
 import SdkEnvironment from './SdkEnvironment';
@@ -50,32 +49,51 @@ export class SubscriptionManager {
   }
 
   async subscribe(): Promise<Subscription> {
-
-    let pushSubscription: RawPushSubscription;
+    let rawPushSubscription: RawPushSubscription;
     let pushRegistration = new PushRegistration();
 
-    if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.ServiceWorker) {
-      pushSubscription = await this.subscribeFcmFromWorker();
+    const env = SdkEnvironment.getWindowEnv();
+
+    if (env === WindowEnvironmentKind.ServiceWorker ||
+      env === WindowEnvironmentKind.Host ||
+      env === WindowEnvironmentKind.OneSignalProxyFrame) {
+      if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.ServiceWorker) {
+        rawPushSubscription = await this.subscribeFcmFromWorker();
+      } else if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.Host ||
+        SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalProxyFrame) {
+        /*
+          Check our notification permission before subscribing.
+
+          - If notifications are blocked, we can't subscribe.
+          - If notifications are granted, the user should be completely resubscribed.
+          - If notifications permissions are untouched, the user will be prompted and then subscribed.
+        */
+        const notificationPermissionBeforeSubscribing: NotificationPermission = await OneSignal.getNotificationPermission();
+        if (notificationPermissionBeforeSubscribing === NotificationPermission.Denied) {
+          throw new PushPermissionNotGrantedError(PushPermissionNotGrantedErrorReason.Blocked);
+        }
+
+        if (this.isSafari()) {
+          rawPushSubscription = await this.subscribeSafari();
+          EventHelper.triggerNotificationPermissionChanged();
+        } else {
+          rawPushSubscription = await this.subscribeFcmFromPage();
+        }
+      }
+      const finalSubscription = await this.registerSubscriptionWithOneSignal(rawPushSubscription);
+      return finalSubscription;
+    } else if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalSubscriptionModal ||
+      SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalSubscriptionPopup) {
+      // No subscription is done here, its down in the proxy frame
+      throw new InvalidStateError(InvalidStateReason.UnsupportedEnvironment);
     } else {
-      /*
-        Check our notification permission before subscribing.
-
-        - If notifications are blocked, we can't subscribe.
-        - If notifications are granted, the user should be completely resubscribed.
-        - If notifications permissions are untouched, the user will be prompted and then subscribed.
-      */
-      const notificationPermissionBeforeSubscribing: NotificationPermission = await OneSignal.getNotificationPermission();
-      if (notificationPermissionBeforeSubscribing === NotificationPermission.Denied) {
-        throw new PushPermissionNotGrantedError(PushPermissionNotGrantedErrorReason.Blocked);
-      }
-
-      if (this.isSafari()) {
-        pushSubscription = await this.subscribeSafari();
-        EventHelper.triggerNotificationPermissionChanged();
-      } else {
-        pushSubscription = await this.subscribeFcm();
-      }
+      throw new InvalidStateError(InvalidStateReason.UnsupportedEnvironment);
     }
+  }
+
+  private async registerSubscriptionWithOneSignal(pushSubscription: RawPushSubscription) {
+    let pushRegistration = new PushRegistration();
+
     pushRegistration.appId = this.config.appId;
 
     if (this.isSafari()) {
@@ -92,10 +110,12 @@ export class SubscriptionManager {
     let newDeviceId;
     if (await this.isAlreadyRegisteredWithOneSignal()) {
       const { deviceId } = await Database.getSubscription();
-      const { id } = await OneSignalApi.updateUserSession(deviceId, pushRegistration);
-      newDeviceId = id;
+      await OneSignalApi.updateUserSession(deviceId, pushRegistration);
+      Event.trigger(OneSignal.EVENTS.REGISTERED);
+      newDeviceId = deviceId;
     } else {
       const { id } = await OneSignalApi.createUser(pushRegistration);
+      Event.trigger(OneSignal.EVENTS.REGISTERED);
       newDeviceId = id;
     }
 
@@ -144,15 +164,14 @@ export class SubscriptionManager {
     return pushSubscriptionDetails;
   }
 
-  async subscribeFcm(): Promise<RawPushSubscription> {
-    await this.context.serviceWorkerManager.installWorker();
+  async subscribeFcmFromPage(): Promise<RawPushSubscription> {
+    if (await this.context.serviceWorkerManager.shouldInstallWorker()) {
+      await this.context.serviceWorkerManager.installWorker();
+    }
 
     log.debug('Waiting for the service worker to activate...');
     const workerRegistration = await navigator.serviceWorker.ready;
-    log.debug('The newly installed service worker is now active.')
-
-    // Installs message channel to receive service worker messages
-    MainHelper.establishServiceWorkerChannel(workerRegistration);
+    log.debug('Service worker is ready to continue subscribing.');
 
     /*
       Trigger the permissionPromptDisplay event to the best of our knowledge.

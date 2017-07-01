@@ -26,6 +26,7 @@ import Path from '../models/Path';
 import Context from '../models/Context';
 import { WorkerMessenger } from '../libraries/WorkerMessenger';
 import { DynamicResourceLoader } from '../services/DynamicResourceLoader';
+import { PushRegistration } from '../models/PushRegistration';
 
 declare var OneSignal: any;
 
@@ -36,7 +37,6 @@ export default class InitHelper {
     return Promise.all([
       OneSignal.isPushNotificationsEnabled(),
       OneSignal.getNotificationPermission(),
-      OneSignal.getUserId(),
       OneSignal.isOptedOut()
     ])
       .then(([isPushEnabled, notificationPermission, isOptedOut]) => {
@@ -113,12 +113,12 @@ export default class InitHelper {
        do this if the user is actually registered with OneSignal though.
        */
       log.debug(`(${SdkEnvironment.getWindowEnv().toString()}) Updating session info for HTTP site.`);
-      OneSignal.isPushNotificationsEnabled(isPushEnabled => {
-        if (isPushEnabled) {
-          MainHelper.getAppId()
-            .then(appId => MainHelper.registerWithOneSignal(appId, null));
-        }
-      });
+      const isPushEnabled = await OneSignal.isPushNotificationsEnabled();
+      if (isPushEnabled) {
+        const context: Context = OneSignal.context;
+        const deviceId = await OneSignal.getUserId();
+        OneSignalApi.updateUserSession(new Uuid(deviceId), new PushRegistration());
+      }
     }
 
     MainHelper.checkAndDoHttpPermissionRequest();
@@ -242,6 +242,8 @@ export default class InitHelper {
   }
 
   static sessionInit(options) {
+    const appConfig: AppConfig = OneSignal.context.appConfig;
+
     log.debug(`Called %csessionInit(${JSON.stringify(options)})`, getConsoleStyle('code'));
     if (OneSignal._sessionInitAlreadyRunning) {
       log.debug('Returning from sessionInit because it has already been called.');
@@ -250,44 +252,17 @@ export default class InitHelper {
       OneSignal._sessionInitAlreadyRunning = true;
     }
 
-    if (Browser.safari) {
-      if (OneSignal.config.safariWebId) {
-        MainHelper.getAppId()
-          .then(appId => {
-            window.safari.pushNotification.requestPermission(
-              `${SdkEnvironment.getOneSignalApiUrl().toString()}/safari`,
-              OneSignal.config.safariWebId,
-              { app_id: appId },
-              pushResponse => {
-                log.info('Safari Registration Result:', pushResponse);
-                if (pushResponse.deviceToken) {
-                  let subscriptionInfo = {
-                    // Safari's subscription returns a device token (e.g. 03D5D4A2EBCE1EE2AED68E12B72B1B995C2BFB811AB7DBF973C84FED66C6D1D5)
-                    endpointOrToken: pushResponse.deviceToken.toLowerCase()
-                  };
-                  MainHelper.registerWithOneSignal(appId, subscriptionInfo);
-                }
-                else {
-                  MainHelper.beginTemporaryBrowserSession();
-                }
-                EventHelper.triggerNotificationPermissionChanged();
-              }
-            );
-          });
-      }
+    if (options.modalPrompt && options.fromRegisterFor) {
+      /*
+        Show the HTTPS fullscreen modal permission message.
+       */
+        OneSignal.subscriptionModalHost = new SubscriptionModalHost(appConfig.appId, options);
+        OneSignal.subscriptionModalHost.load();
     }
-    else if (options.modalPrompt && options.fromRegisterFor) { // If HTTPS - Show modal
-      Promise.all([
-        MainHelper.getAppId(),
-        OneSignal.isPushNotificationsEnabled(),
-        OneSignal.getNotificationPermission()
-      ])
-        .then(([appId]) => {
-          OneSignal.subscriptionModalHost = new SubscriptionModalHost(appId, options);
-          OneSignal.subscriptionModalHost.load();
-        });
-    }
-    else if ('serviceWorker' in navigator && !SubscriptionHelper.isUsingSubscriptionWorkaround()) { // If HTTPS - Show native prompt
+    else if (!SubscriptionHelper.isUsingSubscriptionWorkaround()) {
+      /*
+        Show HTTPS modal prompt.
+       */
       if (options.__sdkCall && MainHelper.wasHttpsNativePromptDismissed()) {
         log.debug('OneSignal: Not automatically showing native HTTPS prompt because the user previously dismissed it.');
         OneSignal._sessionInitAlreadyRunning = false;
@@ -312,6 +287,7 @@ export default class InitHelper {
           } else throw e;
         });
       }
+       OneSignal._sessionInitAlreadyRunning = false;
     }
 
     Event.trigger(OneSignal.EVENTS.SDK_INITIALIZED);

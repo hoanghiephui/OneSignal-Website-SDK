@@ -8,6 +8,7 @@ import { AppConfig, ServerAppConfig } from './models/AppConfig';
 import { PushRegistration } from './models/PushRegistration';
 import { Uuid } from './models/Uuid';
 import { contains, trimUndefined } from './utils';
+import { OneSignalApiErrorKind, OneSignalApiError } from './errors/OneSignalApiError';
 
 
 export default class OneSignalApi {
@@ -181,6 +182,17 @@ export default class OneSignalApi {
   }
 
   static async updateUserSession(userId: Uuid, pushRegistration: PushRegistration) {
-    return OneSignalApi.post(`players/${userId.value}/on_session`, pushRegistration.serialize());
+    try {
+      const response = await OneSignalApi.post(`players/${userId.value}/on_session`, pushRegistration.serialize());
+      if (response && response.success) {
+        return;
+      }
+    } catch (e) {
+      if (e && Array.isArray(e.errors) && e.errors.length > 0) {
+        if (contains(e.errors[0], 'app_id not found')) {
+          throw new OneSignalApiError(OneSignalApiErrorKind.MissingAppId);
+        }
+      } else throw e;
+    }
   }
 }

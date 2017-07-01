@@ -147,10 +147,20 @@ export class ServiceWorkerManager {
     }
     return new Promise<number>(resolve => {
       this.context.workerMessenger.once(WorkerMessengerCommand.WorkerVersion, workerVersion => {
-        resolve(Number(workerVersion));
+        resolve(workerVersion);
       });
       this.context.workerMessenger.unicast(WorkerMessengerCommand.WorkerVersion);
     });
+  }
+
+  async shouldInstallWorker(): Promise<boolean> {
+    const workerState = await this.getActiveState();
+
+    if (workerState !== ServiceWorkerActiveState.WorkerA &&
+      workerState !== ServiceWorkerActiveState.WorkerB) {
+      return true;
+    }
+    return false;
   }
 
   async subscribeForPushNotifications(): Promise<Subscription> {
@@ -178,18 +188,25 @@ export class ServiceWorkerManager {
     const workerState = await this.getActiveState();
     const workerVersion = await this.getWorkerVersion();
 
+    if (workerState !== ServiceWorkerActiveState.WorkerA &&
+      workerState != ServiceWorkerActiveState.WorkerB) {
+      // Do not update 3rd party workers
+      log.debug(`[Service Worker Update] Not updating service worker, current state is ${workerState.toString}.`);
+      return;
+    }
+
     if (workerVersion !== Environment.version()) {
       let workerDirectory, workerFileName, fullWorkerPath;
 
       if (workerState === ServiceWorkerActiveState.WorkerA) {
-        workerDirectory = this.config.workerAPath.getPathWithoutFileName();
-        workerFileName = this.config.workerAPath.getFileName();
-      } else if (workerState === ServiceWorkerActiveState.WorkerB) {
         workerDirectory = this.config.workerBPath.getPathWithoutFileName();
         workerFileName = this.config.workerBPath.getFileName();
+      } else if (workerState === ServiceWorkerActiveState.WorkerB) {
+        workerDirectory = this.config.workerAPath.getPathWithoutFileName();
+        workerFileName = this.config.workerAPath.getFileName();
       }
 
-      fullWorkerPath = `${workerDirectory}/${SdkEnvironment.getBuildEnvPrefix()}${workerFileName}`;
+      fullWorkerPath = `${workerDirectory}/${workerFileName}`;
       log.info(`[Service Worker Update] Updating service worker from v${workerVersion} --> v${Environment.version()}.`);
       log.debug(`[Service Worker Update] Registering new service worker`, fullWorkerPath);
 
@@ -227,11 +244,11 @@ export class ServiceWorkerManager {
     if (workerState === ServiceWorkerActiveState.WorkerA ||
         workerState === ServiceWorkerActiveState.ThirdParty ||
         workerState === ServiceWorkerActiveState.None) {
-      workerDirectory = this.config.workerAPath.getPathWithoutFileName();
-      workerFileName = this.config.workerAPath.getFileName();
-    } else if (workerState === ServiceWorkerActiveState.WorkerB) {
       workerDirectory = this.config.workerBPath.getPathWithoutFileName();
       workerFileName = this.config.workerBPath.getFileName();
+    } else if (workerState === ServiceWorkerActiveState.WorkerB) {
+      workerDirectory = this.config.workerAPath.getPathWithoutFileName();
+      workerFileName = this.config.workerAPath.getFileName();
     } else if (workerState === ServiceWorkerActiveState.Bypassed) {
       /*
         If the page is hard refreshed bypassing the cache, no service worker

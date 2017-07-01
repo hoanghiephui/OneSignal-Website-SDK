@@ -58,6 +58,7 @@ import {
   prepareEmailForHashing,
 } from './utils';
 import { ValidatorUtils } from './utils/ValidatorUtils';
+import { PushRegistration } from './models/PushRegistration';
 
 
 export default class OneSignal {
@@ -683,13 +684,13 @@ export default class OneSignal {
    * @param callback A function accepting one parameter for the OneSignal user ID.
    * @PublicApi
    */
-  static async getUserId(callback?: Action<Uuid>): Promise<Uuid> {
+  static async getUserId(callback?: Action<Uuid>): Promise<string> {
     await awaitOneSignalInitAndSupported();
     logMethodCall('getUserId', callback);
     const subscription = await Database.getSubscription();
     const deviceId = subscription.deviceId;
     executeCallback(callback, deviceId);
-    return deviceId;
+    return deviceId.value;
   }
 
   /**
@@ -833,6 +834,7 @@ export default class OneSignal {
   static context: Context;
   static checkAndWipeUserSubscription = function () { }
   static crypto = Crypto;
+  static PushRegistration = PushRegistration;
 
   static notificationPermission = NotificationPermission;
 

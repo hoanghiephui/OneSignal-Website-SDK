@@ -110,9 +110,8 @@ export class PushRegistration implements Serializable {
   }
 
   serialize() {
-    return {
+    const serializedBundle: any = {
       /* Old Parameters */
-      app_id: this.appId.value,
       device_type: this.deliveryPlatform,
       language: this.language,
       timezone: this.timezone,
@@ -127,10 +126,19 @@ export class PushRegistration implements Serializable {
       operating_system_version: this.operatingSystemVersion,
       device_platform: this.devicePlatform,
       device_model: this.deviceModel,
-      identifier: Browser.safari ? this.subscription.safariDeviceToken : this.subscription.w3cEndpoint,
-      web_auth: this.subscription.w3cAuth,
-      web_p256: this.subscription.w3cP256dh
     };
+
+    if (this.appId) {
+      serializedBundle.app_id = this.appId.value;
+    }
+
+    if (this.subscription) {
+      serializedBundle.identifier = Browser.safari ? this.subscription.safariDeviceToken : this.subscription.w3cEndpoint;
+      serializedBundle.web_auth = this.subscription.w3cAuth;
+      serializedBundle.web_p256 = this.subscription.w3cP256dh;
+    }
+
+    return serializedBundle;
   }
 
   deserialize(_: object): PushRegistration { throw new NotImplementedError(); }

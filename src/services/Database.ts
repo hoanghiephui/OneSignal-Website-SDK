@@ -242,8 +242,9 @@ export default class Database {
   }
 
   async setSubscription(subscription: Subscription) {
-    if (subscription.deviceId)
-      await this.put('Ids', {type: 'userId', id: subscription.deviceId.value});
+    if (subscription.deviceId) {
+      await this.put('Ids', { type: 'userId', id: subscription.deviceId.value });
+    }
     if (subscription.subscriptionToken)
       await this.put('Options', {key: 'registrationId', value: subscription.subscriptionToken});
     if (subscription.optedOut != null) // Checks if null or undefined, allows false

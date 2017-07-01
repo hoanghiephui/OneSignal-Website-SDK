@@ -725,7 +725,6 @@ export class ServiceWorker {
   static onPushSubscriptionChange(event) {
     // Subscription expired
     log.debug(`Called %conPushSubscriptionChange(${JSON.stringify(event, null, 4)}):`, getConsoleStyle('code'), event);
-    //event.waitUntil(ServiceWorker._subscribeForPush(self.registration));
   }
 
   /**
