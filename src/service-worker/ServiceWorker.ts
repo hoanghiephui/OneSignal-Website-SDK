@@ -113,6 +113,23 @@ export class ServiceWorker {
       const subscription = await context.subscriptionManager.subscribe();
       ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.Subscribe, subscription.serialize());
     });
+    ServiceWorker.workerMessenger.on(WorkerMessengerCommand.AmpIsSubscribed, async (appConfigBundle: any) => {
+      log.debug('[Service Worker] Received AMP is subscribed message.');
+      const pushSubscription = await self.registration.pushManager.getSubscription();
+      if (!pushSubscription) {
+        ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.AmpIsSubscribed, false);
+      } else {
+        const permission = await self.registration.pushManager.permissionState(pushSubscription.options);
+        ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.AmpIsSubscribed, !!pushSubscription && permission === "granted");
+      }
+    });
+    ServiceWorker.workerMessenger.on(WorkerMessengerCommand.AmpSubscribe, async (appConfigBundle: any) => {
+      log.debug('[Service Worker] Received AMP is subscribed message.');
+      const context = new Context(null);
+      const subscription = await context.subscriptionManager.subscribe();
+      console.log("Subscription:", subscription);
+      ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.AmpSubscribe, subscription.deviceId);
+    });
   }
 
   /**
@@ -899,7 +916,7 @@ if (typeof self === "undefined" &&
 }
 
 // Set logging to the appropriate level
-log.setDefaultLevel(SdkEnvironment.getBuildEnv() === BuildEnvironmentKind.Development ? (log as any).levels.TRACE : (log as any).levels.ERROR);
+log.setDefaultLevel(SdkEnvironment.getBuildEnv() === BuildEnvironmentKind.Development ? (log as any).levels.ERROR : (log as any).levels.ERROR);
 
 // Run our main file
 if (typeof self !== "undefined") {

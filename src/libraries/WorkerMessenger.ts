@@ -10,7 +10,9 @@ import { Serializable } from '../models/Serializable';
 
 export enum WorkerMessengerCommand {
   WorkerVersion = "GetWorkerVersion",
-  Subscribe = "Subscribe"
+  Subscribe = "Subscribe",
+  AmpIsSubscribed = "amp-web-push-is-subscribed",
+  AmpSubscribe = "amp-web-push-subscribe"
 }
 
 export interface WorkerMessengerMessage {
@@ -74,7 +76,7 @@ export class WorkerMessenger {
   constructor(context: Context) {
     this.context = context;
     this.replies = new WorkerMessengerReplyBuffer();
-    this.debug = false;
+    this.debug = true;
   }
 
   public log(..._) {
