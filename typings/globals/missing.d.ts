@@ -36,6 +36,7 @@ interface ServiceWorkerGlobalScope {
   addEventListener(type: "activate", listener: (this: this, ev: any) => any, ...args): void;
   addEventListener(type: "pushsubscriptionchange", listener: (this: this, ev: any) => any, ...args): void;
   addEventListener(type: "fetch", listener: (this: this, ev: any) => any, ...args): void;
+  readonly location: Location;
 }
 
 type ServiceWorkerState = "installing" | "installed" | "activating" | "activated" | "redundant";
