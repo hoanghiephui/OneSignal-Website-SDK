@@ -99,12 +99,13 @@ export class SubscriptionManager {
     } else if (strategy === UnsubscriptionStrategy.MarkUnsubscribed) {
       if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.ServiceWorker) {
 
-      const subscription = await Database.getSubscription();
-      const { deviceId } = subscription;
+        const { deviceId } = await Database.getSubscription();
 
       await OneSignalApi.updatePlayer(this.context.appConfig.appId, deviceId, {
         notification_types: SubscriptionStateKind.MutedByApi
       });
+
+      await Database.put('Options', {key: 'optedOut', value: true});
       } else {
         throw new NotImplementedError();
       }
@@ -129,24 +130,29 @@ export class SubscriptionManager {
     pushRegistration.subscriptionState = SubscriptionStateKind.Subscribed;
     pushRegistration.subscription = pushSubscription;
 
-    let newDeviceId;
+    let newDeviceId: Uuid;
     if (await this.isAlreadyRegisteredWithOneSignal()) {
       const { deviceId } = await Database.getSubscription();
       await OneSignalApi.updateUserSession(deviceId, pushRegistration);
+      console.warn("Updated existing user registration.", pushRegistration);
       if (SdkEnvironment.getWindowEnv() !== WindowEnvironmentKind.ServiceWorker) {
         Event.trigger(OneSignal.EVENTS.REGISTERED);
       }
       newDeviceId = deviceId;
     } else {
-      const { id } = await OneSignalApi.createUser(pushRegistration);
+      const id = await OneSignalApi.createUser(pushRegistration);
+      console.warn("Registered for a new user registration:", id, pushRegistration);
       if (SdkEnvironment.getWindowEnv() !== WindowEnvironmentKind.ServiceWorker) {
         Event.trigger(OneSignal.EVENTS.REGISTERED);
       }
       newDeviceId = id;
     }
 
+    await Database.put('Options', {key: 'optedOut', value: false});
+    await Database.put('Ids', { type: 'userId', id: newDeviceId.value });
+
     const subscription = new Subscription();
-    subscription.deviceId = new Uuid(newDeviceId);
+    subscription.deviceId = newDeviceId;
     subscription.optedOut = false;
     subscription.subscriptionToken = pushSubscription.w3cEndpoint.toString();
     return subscription;
@@ -346,6 +352,7 @@ export class SubscriptionManager {
       }
     }
 
+    console.warn("Returning push subscription details:", pushSubscriptionDetails);
     return pushSubscriptionDetails;
   }
 

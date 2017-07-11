@@ -131,25 +131,17 @@ export class ServiceWorker {
         ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.AmpIsSubscribed, false);
       } else {
         const permission = await self.registration.pushManager.permissionState(pushSubscription.options);
-        ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.AmpIsSubscribed, !!pushSubscription && permission === "granted");
+        const { optedOut } = await Database.getSubscription();
+        const isSubscribed = !!pushSubscription && permission === "granted" && optedOut !== true;
+        ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.AmpIsSubscribed, isSubscribed);
       }
     });
     ServiceWorker.workerMessenger.on(WorkerMessengerCommand.AmpSubscribe, async () => {
-      console.log('[Service Worker] Received AMP is subscribed message.');
+      console.log('[Service Worker] Received AMP subscribe message.');
       const appId = ServiceWorker.getAppId();
       const appConfig = await OneSignalApi.getAppConfig(appId);
       const context = new Context(appConfig);
       const subscription = await context.subscriptionManager.subscribe();
-      console.log("Subscription:", subscription);
-      ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.AmpSubscribe, subscription.deviceId);
-    });
-    ServiceWorker.workerMessenger.on(WorkerMessengerCommand.AmpIsSubscribed, async () => {
-      console.log('[Service Worker] Received AMP is subscribed message.');
-      const appId = ServiceWorker.getAppId();
-      const appConfig = await OneSignalApi.getAppConfig(appId);
-      const context = new Context(appConfig);
-      const subscription = await context.subscriptionManager.subscribe();
-      console.log("Subscription:", subscription);
       ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.AmpSubscribe, subscription.deviceId);
     });
     ServiceWorker.workerMessenger.on(WorkerMessengerCommand.AmpUnsubscribe, async () => {
@@ -157,9 +149,8 @@ export class ServiceWorker {
       const appId = ServiceWorker.getAppId();
       const appConfig = await OneSignalApi.getAppConfig(appId);
       const context = new Context(appConfig);
-      const subscription = await context.subscriptionManager.unsubscribe(UnsubscriptionStrategy.MarkUnsubscribed);
-      console.log("Subscription:", subscription);
-      ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.AmpSubscribe, subscription.deviceId);
+      await context.subscriptionManager.unsubscribe(UnsubscriptionStrategy.MarkUnsubscribed);
+      ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.AmpUnsubscribe, null);
     });
   }
 

@@ -183,16 +183,18 @@ export default class OneSignalApi {
     }
   }
 
-  static async createUser(pushRegistration: PushRegistration) {
-    return OneSignalApi.post(`players`, pushRegistration.serialize());
+  static async createUser(pushRegistration: PushRegistration): Promise<Uuid> {
+    const response = await OneSignalApi.post(`players`, pushRegistration.serialize());
+    if (response && response.success) {
+      return new Uuid(response.id);
+    } else {
+      return null;
+    }
   }
 
-  static async updateUserSession(userId: Uuid, pushRegistration: PushRegistration) {
+  static async updateUserSession(userId: Uuid, pushRegistration: PushRegistration): Promise<void> {
     try {
       const response = await OneSignalApi.post(`players/${userId.value}/on_session`, pushRegistration.serialize());
-      if (response && response.success) {
-        return;
-      }
     } catch (e) {
       if (e && Array.isArray(e.errors) && e.errors.length > 0) {
         if (contains(e.errors[0], 'app_id not found')) {

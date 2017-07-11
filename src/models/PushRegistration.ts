@@ -133,7 +133,7 @@ export class PushRegistration implements Serializable {
     }
 
     if (this.subscription) {
-      serializedBundle.identifier = Browser.safari ? this.subscription.safariDeviceToken : this.subscription.w3cEndpoint;
+      serializedBundle.identifier = Browser.safari ? this.subscription.safariDeviceToken : this.subscription.w3cEndpoint.toString();
       serializedBundle.web_auth = this.subscription.w3cAuth;
       serializedBundle.web_p256 = this.subscription.w3cP256dh;
     }
