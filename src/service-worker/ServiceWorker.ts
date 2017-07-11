@@ -14,6 +14,7 @@ import Database from '../services/Database';
 import { contains, getConsoleStyle, getDeviceTypeForBrowser, isValidUuid, trimUndefined } from '../utils';
 import { Uuid } from '../models/Uuid';
 import { AppConfig } from '../models/AppConfig';
+import { UnsubscriptionStrategy } from "../models/UnsubscriptionStrategy";
 
 ///<reference path="../../typings/globals/service_worker_api/index.d.ts"/>
 declare var self: ServiceWorkerGlobalScope;
@@ -99,6 +100,16 @@ export class ServiceWorker {
     ServiceWorker.setupMessageListeners();
   }
 
+  static getAppId(): Uuid {
+    if (self.location.search) {
+      // Successful regex matches are at position 1
+      const appId = self.location.search.match(/appId=([0-9a-z-]+)&?/i)[1];
+      return new Uuid(appId);
+    } else {
+      return null;
+    }
+  }
+
   static async setupMessageListeners() {
     log.debug('Setting up message listeners.');
     ServiceWorker.workerMessenger.listen();
@@ -114,7 +125,7 @@ export class ServiceWorker {
       ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.Subscribe, subscription.serialize());
     });
     ServiceWorker.workerMessenger.on(WorkerMessengerCommand.AmpIsSubscribed, async (appConfigBundle: any) => {
-      log.debug('[Service Worker] Received AMP is subscribed message.');
+      console.log('[Service Worker] Received AMP is subscribed message.');
       const pushSubscription = await self.registration.pushManager.getSubscription();
       if (!pushSubscription) {
         ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.AmpIsSubscribed, false);
@@ -123,10 +134,30 @@ export class ServiceWorker {
         ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.AmpIsSubscribed, !!pushSubscription && permission === "granted");
       }
     });
-    ServiceWorker.workerMessenger.on(WorkerMessengerCommand.AmpSubscribe, async (appConfigBundle: any) => {
-      log.debug('[Service Worker] Received AMP is subscribed message.');
-      const context = new Context(null);
+    ServiceWorker.workerMessenger.on(WorkerMessengerCommand.AmpSubscribe, async () => {
+      console.log('[Service Worker] Received AMP is subscribed message.');
+      const appId = ServiceWorker.getAppId();
+      const appConfig = await OneSignalApi.getAppConfig(appId);
+      const context = new Context(appConfig);
       const subscription = await context.subscriptionManager.subscribe();
+      console.log("Subscription:", subscription);
+      ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.AmpSubscribe, subscription.deviceId);
+    });
+    ServiceWorker.workerMessenger.on(WorkerMessengerCommand.AmpIsSubscribed, async () => {
+      console.log('[Service Worker] Received AMP is subscribed message.');
+      const appId = ServiceWorker.getAppId();
+      const appConfig = await OneSignalApi.getAppConfig(appId);
+      const context = new Context(appConfig);
+      const subscription = await context.subscriptionManager.subscribe();
+      console.log("Subscription:", subscription);
+      ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.AmpSubscribe, subscription.deviceId);
+    });
+    ServiceWorker.workerMessenger.on(WorkerMessengerCommand.AmpUnsubscribe, async () => {
+      console.log('[Service Worker] Received AMP unsubscribe message.');
+      const appId = ServiceWorker.getAppId();
+      const appConfig = await OneSignalApi.getAppConfig(appId);
+      const context = new Context(appConfig);
+      const subscription = await context.subscriptionManager.unsubscribe(UnsubscriptionStrategy.MarkUnsubscribed);
       console.log("Subscription:", subscription);
       ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.AmpSubscribe, subscription.deviceId);
     });

@@ -5,7 +5,7 @@ import { Serializable } from './Serializable';
 export class Uuid implements Serializable {
   private uuid: string;
 
-  get value() {
+  get value(): string {
     return this.uuid;
   }
 

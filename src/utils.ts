@@ -505,3 +505,13 @@ export function incrementSdkLoadCount() {
 export function prepareEmailForHashing(email: string): string {
   return email.replace(/\s/g, '').toLowerCase();
 }
+
+export function encodeHashAsUriComponent(hash: object): string {
+  let uriComponent = '';
+  const keys = Object.keys(hash);
+  for (var key of keys) {
+    const value = hash[key];
+    uriComponent += `${key}=${value}`
+  }
+  return encodeURIComponent(uriComponent);
+}

@@ -28,14 +28,23 @@ export default class Context {
       vapidPublicKey: appConfig.vapidPublicKey
     });
 
-    this.serviceWorkerManager = new ServiceWorkerManager(this, {
-      workerAPath: new Path((appConfig.userConfig.path || '/') + SdkEnvironment.getBuildEnvPrefix() + appConfig.userConfig.serviceWorkerPath),
-      workerBPath: new Path((appConfig.userConfig.path || '/') + SdkEnvironment.getBuildEnvPrefix() + appConfig.userConfig.serviceWorkerUpdaterPath),
-      registrationOptions: appConfig.userConfig.serviceWorkerParam || { scope: '/' }
-    });
+    const serviceWorkerManagerConfig = {
+      workerAPath: new Path('/' + SdkEnvironment.getBuildEnvPrefix() + 'OneSignalSDKWorker.js'),
+      workerBPath: new Path('/'+ SdkEnvironment.getBuildEnvPrefix() + 'OneSignalSDKUpdaterWorker.js'),
+      registrationOptions: { scope: '/' }
+    };
+    if (appConfig.userConfig) {
+      if (appConfig.userConfig.path) {
+        serviceWorkerManagerConfig.workerAPath = new Path((appConfig.userConfig.path) + SdkEnvironment.getBuildEnvPrefix() + appConfig.userConfig.serviceWorkerPath);
+        serviceWorkerManagerConfig.workerBPath = new Path((appConfig.userConfig.path) + SdkEnvironment.getBuildEnvPrefix() + appConfig.userConfig.serviceWorkerUpdaterPath);
+      }
+      if (appConfig.userConfig.serviceWorkerParam) {
+        serviceWorkerManagerConfig.registrationOptions = appConfig.userConfig.serviceWorkerParam;
+      }
+    }
+    this.serviceWorkerManager = new ServiceWorkerManager(this, serviceWorkerManagerConfig);
 
     this.workerMessenger = new WorkerMessenger(this);
-
     this.dynamicResourceLoader = new DynamicResourceLoader();
   }
 }

@@ -12,7 +12,9 @@ export enum WorkerMessengerCommand {
   WorkerVersion = "GetWorkerVersion",
   Subscribe = "Subscribe",
   AmpIsSubscribed = "amp-web-push-is-subscribed",
-  AmpSubscribe = "amp-web-push-subscribe"
+  AmpSubscribe = "amp-web-push-subscribe",
+
+  AmpUnsubscribe = "amp-web-push-unsubscribe"
 }
 
 export interface WorkerMessengerMessage {
@@ -39,7 +41,7 @@ export class WorkerMessengerReplyBuffer {
       onceListenerOnly: onceListenerOnly
     };
 
-    if (this.findListenersForMessage(command)) {
+    if (this.findListenersForMessage(command).length > 0) {
       this.replies[command.toString()].push(record);
     } else {
       this.replies[command.toString()] = [record];
@@ -47,7 +49,7 @@ export class WorkerMessengerReplyBuffer {
   }
 
   public findListenersForMessage(command: WorkerMessengerCommand): any {
-    return this.replies[command.toString()];
+    return this.replies[command.toString()] || [];
   }
 
   public deleteListenerRecords(command: WorkerMessengerCommand) {
@@ -120,8 +122,9 @@ export class WorkerMessenger {
       }
     } else {
       if (!(await this.isWorkerControllingPage())) {
-        throw new InvalidStateError(InvalidStateReason.ServiceWorkerNotActivated);
+        this.log("[Worker Messenger] The page is not controlled by the service worker yet. Waiting...", self.registration);
       }
+      await this.waitUntilWorkerControlsPage();
       this.log(`[Worker Messenger] [Page -> SW] Unicasting '${command.toString()}' to service worker.`)
       navigator.serviceWorker.controller.postMessage({
         command: command,

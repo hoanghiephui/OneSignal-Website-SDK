@@ -8,6 +8,7 @@ import Path from '../models/Path';
 import SdkEnvironment from './SdkEnvironment';
 import { Uuid } from '../models/Uuid';
 import { Subscription } from '../models/Subscription';
+import { encodeHashAsUriComponent } from '../utils';
 
 
 export enum ServiceWorkerActiveState {
@@ -117,6 +118,8 @@ export class ServiceWorkerManager {
       the cache (e.g. Ctrl + Shift + R), a service worker will not control the
       page.
      */
+    const workerScriptPath = new URL(workerRegistration.active.scriptURL).pathname;
+
     if (!navigator.serviceWorker.controller) {
       return ServiceWorkerActiveState.Bypassed;
     }
@@ -127,10 +130,10 @@ export class ServiceWorkerManager {
 
         Check the filename to see if it belongs to our A / B worker.
       */
-    else if (new Path(workerRegistration.active.scriptURL).getFileName() == this.config.workerAPath.getFileName()) {
+    else if (new Path(workerScriptPath).getFileName() == this.config.workerAPath.getFileName()) {
       return ServiceWorkerActiveState.WorkerA;
     }
-    else if (new Path(workerRegistration.active.scriptURL).getFileName() == this.config.workerBPath.getFileName()) {
+    else if (new Path(workerScriptPath).getFileName() == this.config.workerBPath.getFileName()) {
       return ServiceWorkerActiveState.WorkerB;
     }
     else {
@@ -206,7 +209,10 @@ export class ServiceWorkerManager {
         workerFileName = this.config.workerAPath.getFileName();
       }
 
-      fullWorkerPath = `${workerDirectory}/${workerFileName}`;
+      const installUrlQueryParams = {
+        appId: this.context.appConfig.appId.value
+      };
+      fullWorkerPath = `${workerDirectory}/${workerFileName}?${encodeHashAsUriComponent(installUrlQueryParams)}`;
       log.info(`[Service Worker Update] Updating service worker from v${workerVersion} --> v${Environment.version()}.`);
       log.debug(`[Service Worker Update] Registering new service worker`, fullWorkerPath);
 
@@ -260,7 +266,10 @@ export class ServiceWorkerManager {
       throw new InvalidStateError(InvalidStateReason.UnsupportedEnvironment);
     }
 
-    fullWorkerPath = `${workerDirectory}/${workerFileName}`;
+    const installUrlQueryParams = {
+      appId: this.context.appConfig.appId.value
+    };
+    fullWorkerPath = `${workerDirectory}/${workerFileName}${encodeHashAsUriComponent(installUrlQueryParams)}`;
     log.info(`[Service Worker Installation] Installing service worker ${fullWorkerPath}.`);
     await navigator.serviceWorker.register(fullWorkerPath, this.config.registrationOptions);
     log.debug(`[Service Worker Installation] Service worker installed.`);

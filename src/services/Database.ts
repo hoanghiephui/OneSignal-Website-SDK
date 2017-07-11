@@ -153,8 +153,8 @@ export default class Database {
   }
 
   async setAppConfig(appConfig: AppConfig) {
-    if (appConfig.appId)
-      await this.put('Ids', {type: 'appId', id: appConfig.appId})
+    if (appConfig.appId && appConfig.appId.value)
+      await this.put('Ids', {type: 'appId', id: appConfig.appId.value})
     if (appConfig.subdomain)
       await this.put('Options', {key: 'subdomain', value: appConfig.subdomain})
     if (appConfig.httpUseOneSignalCom)
@@ -242,7 +242,7 @@ export default class Database {
   }
 
   async setSubscription(subscription: Subscription) {
-    if (subscription.deviceId) {
+    if (subscription.deviceId && subscription.deviceId.value) {
       await this.put('Ids', { type: 'userId', id: subscription.deviceId.value });
     }
     if (subscription.subscriptionToken)

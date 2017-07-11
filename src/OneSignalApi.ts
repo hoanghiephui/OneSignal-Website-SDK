@@ -9,6 +9,7 @@ import { PushRegistration } from './models/PushRegistration';
 import { Uuid } from './models/Uuid';
 import { contains, trimUndefined } from './utils';
 import { OneSignalApiErrorKind, OneSignalApiError } from './errors/OneSignalApiError';
+import { WindowEnvironmentKind } from './models/WindowEnvironmentKind';
 
 
 export default class OneSignalApi {
@@ -113,7 +114,7 @@ export default class OneSignalApi {
     var params = {
       app_id: appId.value,
       contents: contents,
-      include_player_ids: playerIds,
+      include_player_ids: playerIds.map(x => x.value),
       isAnyWeb: true,
       data: data,
       web_buttons: buttons
@@ -135,23 +136,28 @@ export default class OneSignalApi {
   static async getAppConfig(appId: Uuid): Promise<AppConfig> {
     try {
       const serverConfig = await new Promise<ServerAppConfig>((resolve, reject) => {
-        /**
-         * Due to CloudFlare's algorithms, the .js extension is required for proper caching. Don't remove it!
-         */
-        JSONP(`${SdkEnvironment.getOneSignalApiUrl().toString()}/sync/${appId.value}/web`, null, (err, data) => {
-          if (err) {
-            reject(err);
-          } else {
-            if (data.success) {
-              resolve(data);
+        if (SdkEnvironment.getWindowEnv() !== WindowEnvironmentKind.ServiceWorker) {
+          /**
+           * Due to CloudFlare's algorithms, the .js extension is required for proper caching. Don't remove it!
+           */
+          JSONP(`${SdkEnvironment.getOneSignalApiUrl().toString()}/sync/${appId.value}/web`, null, (err, data) => {
+            if (err) {
+              reject(err);
             } else {
-              // For JSONP, we return a 200 even for errors, there's a success: false param
-              reject(data);
+              if (data.success) {
+                resolve(data);
+              } else {
+                // For JSONP, we return a 200 even for errors, there's a success: false param
+                reject(data);
+              }
             }
-          }
-        });
+          });
+        } else {
+          resolve(OneSignalApi.get(`sync/${appId.value}/web`, null));
+        }
       });
       const config = new AppConfig();
+      config.appId = appId;
       if (serverConfig.features) {
         if (serverConfig.features.cookie_sync && serverConfig.features.cookie_sync.enable) {
           config.cookieSyncEnabled = true;

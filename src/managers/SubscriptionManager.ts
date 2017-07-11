@@ -23,6 +23,8 @@ import OneSignalApi from '../OneSignalApi';
 import Database from '../services/Database';
 import SdkEnvironment from './SdkEnvironment';
 import { Subscription } from '../models/Subscription';
+import { UnsubscriptionStrategy } from "../models/UnsubscriptionStrategy";
+import NotImplementedError from '../errors/NotImplementedError';
 
 
 
@@ -48,7 +50,7 @@ export class SubscriptionManager {
       window.safari.pushNotification !== undefined;
   }
 
-  async subscribe(): Promise<Subscription> {
+  public async subscribe(): Promise<Subscription> {
     let rawPushSubscription: RawPushSubscription;
     let pushRegistration = new PushRegistration();
 
@@ -91,6 +93,26 @@ export class SubscriptionManager {
     }
   }
 
+  public async unsubscribe(strategy: UnsubscriptionStrategy) {
+    if (strategy === UnsubscriptionStrategy.DestroySubscription) {
+      throw new NotImplementedError();
+    } else if (strategy === UnsubscriptionStrategy.MarkUnsubscribed) {
+      if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.ServiceWorker) {
+
+      const subscription = await Database.getSubscription();
+      const { deviceId } = subscription;
+
+      await OneSignalApi.updatePlayer(this.context.appConfig.appId, deviceId, {
+        notification_types: SubscriptionStateKind.MutedByApi
+      });
+      } else {
+        throw new NotImplementedError();
+      }
+    } else {
+      throw new NotImplementedError();
+    }
+  }
+
   private async registerSubscriptionWithOneSignal(pushSubscription: RawPushSubscription) {
     let pushRegistration = new PushRegistration();
 
@@ -111,11 +133,15 @@ export class SubscriptionManager {
     if (await this.isAlreadyRegisteredWithOneSignal()) {
       const { deviceId } = await Database.getSubscription();
       await OneSignalApi.updateUserSession(deviceId, pushRegistration);
-      Event.trigger(OneSignal.EVENTS.REGISTERED);
+      if (SdkEnvironment.getWindowEnv() !== WindowEnvironmentKind.ServiceWorker) {
+        Event.trigger(OneSignal.EVENTS.REGISTERED);
+      }
       newDeviceId = deviceId;
     } else {
       const { id } = await OneSignalApi.createUser(pushRegistration);
-      Event.trigger(OneSignal.EVENTS.REGISTERED);
+      if (SdkEnvironment.getWindowEnv() !== WindowEnvironmentKind.ServiceWorker) {
+        Event.trigger(OneSignal.EVENTS.REGISTERED);
+      }
       newDeviceId = id;
     }
 
@@ -126,12 +152,12 @@ export class SubscriptionManager {
     return subscription;
   }
 
-  async isAlreadyRegisteredWithOneSignal() {
+  private async isAlreadyRegisteredWithOneSignal() {
       const { deviceId } = await Database.getSubscription();
       return !!deviceId.value;
   }
 
-  subscribeSafariPromptPermission(): Promise<string | null> {
+  private subscribeSafariPromptPermission(): Promise<string | null> {
     return new Promise<string>(resolve => {
       window.safari.pushNotification.requestPermission(
         `${SdkEnvironment.getOneSignalApiUrl().toString()}/safari`,
@@ -150,7 +176,7 @@ export class SubscriptionManager {
     });
   }
 
-  async subscribeSafari(): Promise<RawPushSubscription> {
+  private async subscribeSafari(): Promise<RawPushSubscription> {
     const pushSubscriptionDetails = new RawPushSubscription();
     if (!this.config.safariWebId) {
       throw new SdkInitError(SdkInitErrorKind.MissingSafariWebId);
@@ -164,7 +190,7 @@ export class SubscriptionManager {
     return pushSubscriptionDetails;
   }
 
-  async subscribeFcmFromPage(): Promise<RawPushSubscription> {
+  private async subscribeFcmFromPage(): Promise<RawPushSubscription> {
     if (await this.context.serviceWorkerManager.shouldInstallWorker()) {
       await this.context.serviceWorkerManager.installWorker();
     }
@@ -176,12 +202,14 @@ export class SubscriptionManager {
     /*
       Trigger the permissionPromptDisplay event to the best of our knowledge.
     */
-    Event.trigger(OneSignal.EVENTS.PERMISSION_PROMPT_DISPLAYED);
+    if (SdkEnvironment.getWindowEnv() !== WindowEnvironmentKind.ServiceWorker) {
+      Event.trigger(OneSignal.EVENTS.PERMISSION_PROMPT_DISPLAYED);
+    }
 
     return await this.subscribeFcmVapidOrLegacyKey(workerRegistration);
   }
 
-  async subscribeFcmFromWorker(): Promise<RawPushSubscription> {
+  private async subscribeFcmFromWorker(): Promise<RawPushSubscription> {
     /*
       We're running inside of the service worker.
 
@@ -220,7 +248,7 @@ export class SubscriptionManager {
    * migrate the subscription to VAPID; this isn't possible unless the user is
    * first unsubscribed, and unsubscribing frequently can be a little risky.
    */
-  async subscribeFcmVapidOrLegacyKey(workerRegistration: ServiceWorkerRegistration): Promise<RawPushSubscription> {
+  private async subscribeFcmVapidOrLegacyKey(workerRegistration: ServiceWorkerRegistration): Promise<RawPushSubscription> {
     let options = {
         userVisibleOnly: true,
         applicationServerKey: undefined
@@ -321,7 +349,7 @@ export class SubscriptionManager {
     return pushSubscriptionDetails;
   }
 
-  urlBase64ToUint8Array(base64String) {
+  private urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding)
       .replace(/\-/g, '+')

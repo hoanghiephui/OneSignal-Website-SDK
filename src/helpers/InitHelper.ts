@@ -235,7 +235,7 @@ export default class InitHelper {
   // overridingPageTitle: Only for the HTTP Iframe, pass the page title in from the top frame
   static async initSaveState(overridingPageTitle: string) {
     const appId = await MainHelper.getAppId()
-    await Database.put("Ids", { type: "appId", id: appId });
+    await Database.put("Ids", { type: "appId", id: appId.value });
     const initialPageTitle = overridingPageTitle || document.title || 'Notification';
     await Database.put("Options", { key: "pageTitle", value: initialPageTitle });
     log.info(`OneSignal: Set pageTitle to be '${initialPageTitle}'.`);
