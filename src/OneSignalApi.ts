@@ -192,14 +192,19 @@ export default class OneSignalApi {
     }
   }
 
-  static async updateUserSession(userId: Uuid, pushRegistration: PushRegistration): Promise<void> {
+  static async updateUserSession(userId: Uuid, pushRegistration: PushRegistration): Promise<Uuid> {
     try {
       const response = await OneSignalApi.post(`players/${userId.value}/on_session`, pushRegistration.serialize());
+      if (response.id) {
+        // A new user ID can be returned
+        return new Uuid(response.id);
+      } else {
+        return userId;
+      }
     } catch (e) {
-      if (e && Array.isArray(e.errors) && e.errors.length > 0) {
-        if (contains(e.errors[0], 'app_id not found')) {
-          throw new OneSignalApiError(OneSignalApiErrorKind.MissingAppId);
-        }
+      if (e && Array.isArray(e.errors) && e.errors.length > 0 && contains(e.errors[0], 'app_id not found')) {
+        throw new OneSignalApiError(OneSignalApiErrorKind.MissingAppId);
+
       } else throw e;
     }
   }
