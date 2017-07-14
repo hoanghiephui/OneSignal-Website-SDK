@@ -11,7 +11,7 @@ import { Serializable } from '../models/Serializable';
 export enum WorkerMessengerCommand {
   WorkerVersion = "GetWorkerVersion",
   Subscribe = "Subscribe",
-  AmpIsSubscribed = "amp-web-push-is-subscribed",
+  AmpSubscriptionState = "amp-web-push-subscription-state",
   AmpSubscribe = "amp-web-push-subscribe",
 
   AmpUnsubscribe = "amp-web-push-unsubscribe"
@@ -133,21 +133,31 @@ export class WorkerMessenger {
     }
   }
 
-  async listen() {
-    if (!(await this.isWorkerControllingPage())) {
-      this.log("[Worker Messenger] The page is not controlled by the service worker yet. Waiting...", self.registration);
-    }
-    await this.waitUntilWorkerControlsPage();
-    this.log("[Worker Messenger] The page is now controlled by the service worker.");
+  /*
+    Due to https://github.com/w3c/ServiceWorker/issues/1156, listen() must
+    synchronously add self.addEventListener('message') if we are running in the
+    service worker.
+   */
+  listen() {
     const env = SdkEnvironment.getWindowEnv();
 
     if (env === WindowEnvironmentKind.ServiceWorker) {
       self.addEventListener('message', this.onWorkerMessageReceivedFromPage.bind(this));
       this.log('[Worker Messenger] Service worker is now listening for messages.');
     } else {
-      navigator.serviceWorker.addEventListener('message', this.onPageMessageReceivedFromServiceWorker.bind(this));
-      this.log('[Worker Messenger] Page is now listening for messages.');
+      this.listenForPage();
     }
+  }
+
+  private async listenForPage() {
+    if (!(await this.isWorkerControllingPage())) {
+      this.log("[Worker Messenger] The page is not controlled by the service worker yet. Waiting...", self.registration);
+    }
+    await this.waitUntilWorkerControlsPage();
+    this.log("[Worker Messenger] The page is now controlled by the service worker.");
+
+    navigator.serviceWorker.addEventListener('message', this.onPageMessageReceivedFromServiceWorker.bind(this));
+    this.log('[Worker Messenger] Page is now listening for messages.');
   }
 
   async onWorkerMessageReceivedFromPage(event: ServiceWorkerMessageEvent) {
@@ -167,10 +177,8 @@ export class WorkerMessenger {
     for (let i = listenersToRemove.length - 1; i >= 0; i--) {
       const listenerRecord = listenersToRemove[i];
       this.replies.deleteListenerRecord(data.command, listenerRecord);
-      this.log(`[Worker Messenger] SW: Deleted listener record:`, data.command.toString(), listenerRecord);
     }
     for (let listenerRecord of listenersToCall) {
-      this.log(`[Worker Messenger] SW: Calling callback for listener record:`, listenerRecord);
       listenerRecord.callback.apply(null, [data.payload]);
     }
   }
@@ -192,10 +200,8 @@ export class WorkerMessenger {
     for (let i = listenersToRemove.length - 1; i >= 0; i--) {
       const listenerRecord = listenersToRemove[i];
       this.replies.deleteListenerRecord(data.command, listenerRecord);
-      this.log(`[Worker Messenger] Page: Deleted listener record:`, data.command.toString(), listenerRecord);
     }
     for (let listenerRecord of listenersToCall) {
-      this.log(`[Worker Messenger] Page: Calling callback for listener record:`, listenerRecord);
       listenerRecord.callback.apply(null, [data.payload]);
     }
   }

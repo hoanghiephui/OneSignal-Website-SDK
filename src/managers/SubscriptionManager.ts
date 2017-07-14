@@ -140,7 +140,6 @@ export class SubscriptionManager {
       }
     } else {
       const id = await OneSignalApi.createUser(pushRegistration);
-      console.warn("Registered for a new user registration:", id, pushRegistration);
       if (SdkEnvironment.getWindowEnv() !== WindowEnvironmentKind.ServiceWorker) {
         Event.trigger(OneSignal.EVENTS.REGISTERED);
       }
@@ -351,7 +350,6 @@ export class SubscriptionManager {
       }
     }
 
-    console.warn("Returning push subscription details:", pushSubscriptionDetails);
     return pushSubscriptionDetails;
   }
 

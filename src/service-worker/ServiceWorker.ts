@@ -95,7 +95,22 @@ export class ServiceWorker {
     self.addEventListener('install', ServiceWorker.onServiceWorkerInstalled);
     self.addEventListener('activate', ServiceWorker.onServiceWorkerActivated);
     self.addEventListener('pushsubscriptionchange', ServiceWorker.onPushSubscriptionChange);
+    /*
+      According to
+      https://w3c.github.io/ServiceWorker/#run-service-worker-algorithm:
 
+      "user agents are encouraged to show a warning that the event listeners
+      must be added on the very first evaluation of the worker script."
+
+      We have to register our event handler statically (not within an
+      asynchronous method) so that the browser can optimize not waking up the
+      service worker for events that aren't known for sure to be listened for.
+
+      Also see: https://github.com/w3c/ServiceWorker/issues/1156
+    */
+    log.debug('Setting up message listeners.');
+    // self.addEventListener('message') is statically added inside the listen() method
+    ServiceWorker.workerMessenger.listen();
     // Install messaging event handlers for page <-> service worker communication
     ServiceWorker.setupMessageListeners();
   }
@@ -111,8 +126,6 @@ export class ServiceWorker {
   }
 
   static async setupMessageListeners() {
-    log.debug('Setting up message listeners.');
-    ServiceWorker.workerMessenger.listen();
     ServiceWorker.workerMessenger.on(WorkerMessengerCommand.WorkerVersion, _ => {
       log.debug('[Service Worker] Received worker version message.');
       ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.WorkerVersion, Environment.version());
@@ -124,16 +137,16 @@ export class ServiceWorker {
       const subscription = await context.subscriptionManager.subscribe();
       ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.Subscribe, subscription.serialize());
     });
-    ServiceWorker.workerMessenger.on(WorkerMessengerCommand.AmpIsSubscribed, async (appConfigBundle: any) => {
-      console.log('[Service Worker] Received AMP is subscribed message.');
+    ServiceWorker.workerMessenger.on(WorkerMessengerCommand.AmpSubscriptionState, async (appConfigBundle: any) => {
+      console.log('[Service Worker] Received AMP subscription state message.');
       const pushSubscription = await self.registration.pushManager.getSubscription();
       if (!pushSubscription) {
-        ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.AmpIsSubscribed, false);
+        ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.AmpSubscriptionState, false);
       } else {
         const permission = await self.registration.pushManager.permissionState(pushSubscription.options);
         const { optedOut } = await Database.getSubscription();
         const isSubscribed = !!pushSubscription && permission === "granted" && optedOut !== true;
-        ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.AmpIsSubscribed, isSubscribed);
+        ServiceWorker.workerMessenger.broadcast(WorkerMessengerCommand.AmpSubscriptionState, isSubscribed);
       }
     });
     ServiceWorker.workerMessenger.on(WorkerMessengerCommand.AmpSubscribe, async () => {
