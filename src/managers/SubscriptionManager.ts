@@ -134,7 +134,6 @@ export class SubscriptionManager {
     if (await this.isAlreadyRegisteredWithOneSignal()) {
       const { deviceId } = await Database.getSubscription();
       newDeviceId = await OneSignalApi.updateUserSession(deviceId, pushRegistration);
-      console.warn("Updated existing user registration.", pushRegistration);
       if (SdkEnvironment.getWindowEnv() !== WindowEnvironmentKind.ServiceWorker) {
         Event.trigger(OneSignal.EVENTS.REGISTERED);
       }
